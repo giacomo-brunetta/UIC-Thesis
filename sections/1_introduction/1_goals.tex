@@ -1,0 +1,38 @@
+\section{Goals and Research Questions}
+\label{intro:goals}
+
+In recent years, large language models (LLMs) have demonstrated unprecedented capabilities in natural language processing tasks, including translation, question answering, reasoning-based problem solving, and automated code generation.
+Their success has fueled a wide range of popular applications—including chatbots, search engines, and code generation agents—that rely on LLMs as a fundamental component of their backend systems. As a result, LLM inference has become one of the most requested software-as-a-service (SaaS) workloads.
+
+Numerous solutions have been proposed to address the challenge of accelerating LLM inference at scale. Currently, graphics processing units (GPUs) represent the most widely adopted approach, while domain-specific architectures (DSAs)—particularly dataflow AI accelerators—are emerging as a promising alternative \cite{chen2020survey, koilia2024hardware, silvano2025survey, kachris2025survey}.
+The primary distinction between GPUs and dataflow accelerators depends on their approach to parallel computation \cite{kundu2025comparison}:
+\begin{itemize}
+    \item \textbf{GPUs} employ the single-instruction, multiple-thread (SIMT) model to execute thousands of threads in parallel, thereby accelerating the matrix and vector operations characteristic of deep learning workloads.
+    \item \textbf{Dataflow accelerators} stream data through a network of compute units in a highly pipelined, parallel, and often asynchronously scheduled manner. This design significantly reduces data movement.
+\end{itemize}
+
+Beyond pursuing higher performance, accelerator designs increasingly prioritise energy efficiency to ensure sustainable large-scale deployment.
+According to the International Energy Agency (IEA), the energy consumption of accelerated servers is projected to increase by 30\% annually from 2024 to 2030, primarily due to AI-related demand \cite{iea2025ai}.
+Notably, companies such as NVIDIA and AWS report that 80–90\% of their AI-related energy consumption arises from model serving (inference) rather than training \cite{patterson2021carbon}.
+Consequently, minimising the energy consumption of LLM inference is crucial for ensuring the economic and environmental sustainability of these technologies.
+
+Recent studies have examined LLM inference across different hardware accelerators. Most prior work focuses on NVIDIA GPUs \cite{fernandez2025energy, wilhelm2025beyond, wilkins2024offline, stojkovic2025dynamollm, maliakel2025investigating, kakolyris2024slo, stojkovic2024towards}, while others also include AMD and Intel GPUs \cite{reddi2020mlperf, LLMInfbench} and dataflow accelerators \cite{emani2024toward, Emani2022, LLMInfbench}.
+However, key gaps remain: there is limited cross-vendor evaluation directly comparing modern GPUs, with most studies emphasising performance while overlooking energy efficiency; and there is a lack of investigation into dataflow accelerators.
+
+Bridging these gaps is challenging because LLM inference performance depends on many interrelated factors beyond the choice of hardware accelerators. We identify four key challenges:
+
+\begin{enumerate}
+    \item \textbf{Model characteristics}: The parameter count and architectural design of an LLM, such as the use of Mixture-of-Experts layers, strongly affect both computational demands and memory footprint.
+
+    \item \textbf{Batch size}: This parameter introduces complex trade-offs, as it directly influences the balance between computation and memory access patterns, often increasing memory pressure and impacting overall performance.
+
+    \item \textbf{Quantisation}: Modern GPUs frequently employ quantisation to reduce memory requirements and improve computational efficiency; however, its effects vary significantly across architectures, highlighting the need for explicit, architecture-aware evaluations.
+
+    \item \textbf{Multi-GPU serving}: Modern LLMs often require multiple accelerators for inference. A variety of parallelisation strategies—such as tensor, pipeline, or data parallelism—can be employed, each exhibiting distinct, hardware-dependent effects on performance scaling.
+\end{enumerate}
+
+Together, these factors underscore the intrinsic complexity of systematically analysing performance and energy efficiency in LLM inference across diverse accelerator platforms.
+
+
+With this thesis, we aim to provide a comprehensive evaluation of LLM inference performance and energy consumption across multiple AI accelerators, including datacenter-level GPUs from Nvidia, AMD, and Intel, as well as dataflow AI accelerators from SambaNova and Cerebras.
+We evaluate fourteen open-source LLMs with different architectures and scales, and analyse the effects of model size, batch size, quantisation, and deployment configurations ranging from single- and multi-GPU setups to dataflow-accelerator deployments. This comprehensive analysis reveals trade-offs among these factors, performance, and energy efficiency, offering deeper insight into how models and hardware interact under realistic inference workloads.

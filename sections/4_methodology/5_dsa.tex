@@ -1,0 +1,23 @@
+\subsection{Dataflow Accelerators Experiments}
+\label{chap:methods:sec:dsa}
+
+We investigate LLM inference on hardware accelerators using two dataflow machines: a SambaNova Systems SN40L-16R node \cite{Prabhakar2024}, featuring 16 4th-generation RDUs, and a Cerebras CS3 system \cite{Lie2023} featuring the third-generation Wafer Scale Engine (WSE3). The details of those accelerators are discussed in Section \ref{chap:background:sec:dflow}.
+
+While GPUs are characterized by many streaming multiprocessors that share a common hierarchical memory, dataflow accelerators feature a tiled array of interconnected processing elements, allowing for the mapping of computational graphs into the hardware fabric. This dataflow approach enables reliance solely on fast local scratchpad memories and explicit communication between cores, rather than using a hierarchical cache system as in GPUs, thereby reducing the latency of memory accesses.
+
+Unlike the GPU experiments, which all leveraged vLLM, we utilize a different proprietary inference framework for each dataflow accelerator.
+
+For the Cerebras CS3 system, we use an early-prototype proprietary inference engine that can be queried through an OpenAI-style API.
+We task the engine with processing the entire inference dataset by creating one request per conversation.
+The Cerebras inference engine supports running models that host weights, activations, and KV caches entirely in on-chip memory to achieve optimal performance. Compared to the streaming-weight approach used for training, this limits the memory capacity to 44GB per CS3 system. For this reason, we limit our analysis to  Llama 3.1 8B.
+
+We repeat the experiment for different batch sizes, ranging from 1 to 8.
+To match the engine's effective batch size, we instantiate a corresponding number of clients that send a new request immediately after receiving a response, with the dataset evenly partitioned across clients.
+The latencies reported in the responses sent to clients are used to obtain performance metrics.
+
+Regarding power, we collect measurements at the WSE chassis level for all power readings, including the power drawn by the host CPU, WSE, and other supporting components.
+
+For the SambaNova SN40L, we use the SambaStudio inference engine, which can be queried through an OpenAI-compatible interface. Similar to the Cerebras CS3 experiments, we evaluate batch sizes from 1 to 8, creating a number of clients to match the engine's effective batch size.
+For this accelerator, we evaluate both Llama 3.1 8B and Llama 3.3 70B.
+
+Regarding power readings, we rely on the PDU-level power consumption for each RDU.

@@ -1,0 +1,248 @@
+% =====================================
+% Accessible PDF Setup (Overleaf Safe)
+% =====================================
+
+\ifdefined\DocumentMetadata
+  \DocumentMetadata{
+    lang=en-US
+  }
+\fi
+
+\documentclass[12pt,reqno,oneside]{amsbook}
+
+% =====================================
+% Encoding (required for screen readers)
+% =====================================
+
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+
+\ifdefined\pdfglyphtounicode
+  \input{glyphtounicode}
+  \pdfgentounicode=1
+\fi
+
+% =====================================
+% Language
+% =====================================
+
+\usepackage[english]{babel}
+\usepackage{latexml}
+
+% =====================================
+% Math
+% =====================================
+
+\usepackage{amsmath,amssymb,amsthm}
+
+% =====================================
+% Graphics
+% =====================================
+
+\usepackage{graphicx}
+\usepackage{subcaption}
+
+% =====================================
+% Code
+% =====================================
+
+\iflatexml
+\else
+  \usepackage{listings}
+\fi
+\usepackage{comment}
+
+% =====================================
+% Layout
+% =====================================
+
+\usepackage{geometry}
+\geometry{margin=1in}
+
+% =====================================
+% Spacing
+% =====================================
+
+\usepackage{setspace}
+
+% =====================================
+% Hyperlinks + PDF metadata
+% =====================================
+
+\usepackage[
+ pdfusetitle,
+ pdfencoding=auto,
+ psdextra,
+ colorlinks=true,
+ linkcolor=black,
+ citecolor=black,
+ urlcolor=blue
+]{hyperref}
+
+% =====================================
+% Tagged PDF (lightweight mode)
+% =====================================
+
+\iflatexml
+  \providecommand{\tagpdfsetup}[1]{}
+\else
+  \usepackage{tagpdf}
+  \tagpdfsetup{
+   activate,
+   interwordspace=true
+  }
+\fi
+
+% =====================================
+% Custom inputs
+% =====================================
+
+\input{sections/other/__preamble}
+\input{sections/other/__commands}
+
+% =====================================
+% Theorem environments
+% =====================================
+
+\newtheorem{theorem}{Theorem}[chapter]
+\newtheorem{lemma}[theorem]{Lemma}
+
+\theoremstyle{definition}
+\newtheorem{definition}[theorem]{Definition}
+
+% =====================================
+% Title Metadata
+% =====================================
+
+\newcommand{\thetitle}{Performance and Energy Efficiency Insights in LLM Inference Across Hardware Accelerators}
+\newcommand{\institution}{University of Illinois Chicago}
+\newcommand{\degree}{Master of Science}
+\newcommand{\programname}{Computer Science}
+\newcommand{\committee}{Zhiling Lan, Chair, Advisor \\ Michael Papka \\ Davide Conficconi, Politecnico di Milano \\ Valerie Taylor, Argonne National Laboratory}
+\newcommand{\theauthor}{Giacomo Brunetta}
+\newcommand{\priordegrees}{BS, Politecnico di Milano 2023}
+\newcommand{\graduationyear}{2026}
+
+\author{\theauthor}
+\title{\thetitle}
+\date{\today}
+
+% =====================================
+% PDF Metadata
+% =====================================
+
+\hypersetup{
+  pdftitle={\thetitle},
+  pdfauthor={\theauthor},
+  pdfsubject={Master's Thesis},
+  pdfcreator={LaTeX},
+  pdfdisplaydoctitle=true
+}
+
+\begin{document}
+
+\frontmatter
+
+% =====================================
+% Title Page
+% =====================================
+
+\begin{titlepage}
+\centering
+
+{\Large\textbf{\thetitle}\par}
+
+\vspace{2cm}
+
+BY
+
+\vspace{0.5cm}
+
+{\theauthor}\\
+{\priordegrees}
+
+\vspace{2cm}
+
+THESIS
+
+\vspace{1cm}
+
+Submitted as partial fulfillment of the requirements
+
+for the degree of Master of Science in {\programname}
+
+in the Graduate College of the
+
+University of Illinois Chicago, {\graduationyear}
+
+\vspace{1cm}
+
+Chicago, Illinois
+
+\vfill
+
+\raggedright
+
+Defense Committee:
+
+\committee
+
+\end{titlepage}
+
+\setcounter{page}{2}
+
+% =====================================
+% Accessibility Statement
+% =====================================
+
+\chapter*{Accessibility Statement}
+
+\iflatexml
+This document is provided in an accessible EPUB format suitable for screen readers and assistive technologies.
+\else
+An accessible EPUB version of this document can be obtained by contacting Giacomo Brunetta at gbrun@uic.edu.
+\fi
+
+% =====================================
+% Front Matter
+% =====================================
+
+\input{sections/other/_1_dedication}
+\input{sections/other/_2_acknowledgement}
+
+\tableofcontents
+\listoffigures
+\listoftables
+
+% =====================================
+% Main Content
+% =====================================
+
+\mainmatter
+
+\input{sections/1_introduction/0_index}
+\input{sections/2_background/0_index}
+\input{sections/3_hardware/0_index}
+\input{sections/4_methodology/0_index}
+\input{sections/6_results/0_index}
+\input{sections/7_related/0_index}
+\input{sections/8_conclusions/0_index}
+
+% =====================================
+% Back Matter
+% =====================================
+
+\backmatter
+
+\singlespacing
+
+\iflatexml
+  \IfFileExists{thesis.bbl}{\input{thesis.bbl}}{}
+\else
+  \bibliographystyle{plain}
+  \bibliography{thesis}
+\fi
+
+\input{sections/other/_5_vita}
+
+\end{document}

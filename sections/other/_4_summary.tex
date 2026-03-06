@@ -1,0 +1,10 @@
+\summary
+
+The rapid growth of LLM-based applications—such as chatbots, coding assistants, and search engines—has driven the need to deliver LLM inference at scale. This workload is highly resource-demanding, requiring substantial compute throughput along with large, high-bandwidth memory. As a result, efficient LLM serving often depends on specialised hardware acceleration. While GPUs continue to dominate, domain-specific accelerators like TPUs and dataflow architectures are becoming increasingly compelling alternatives.
+
+In this thesis, we provide a comprehensive empirical performance study of six datacenter-grade GPUs from Nvidia, AMD, and Intel, along with two dataflow AI accelerators from Cerebras and SambaNova, evaluated across fourteen open-source LLMs.
+Our analysis examines the key factors that influence LLM inference performance, including model size, batch size, quantisation, and multi-GPU scaling across different parallelism strategies. Crucially, we evaluate both performance and energy efficiency to offer an energy-aware comparison across accelerator classes. 
+
+Our findings show that dataflow AI accelerators deliver an order-of-magnitude speedup in throughput and latency for small batch sizes relative to GPUs. Conversely, GPUs provide larger HBM memory capacities and benefit from a more straightforward programming model, enabling greater flexibility in batch sizing.
+
+Together, these results offer actionable insights for optimising LLM inference across a range of deployment settings.

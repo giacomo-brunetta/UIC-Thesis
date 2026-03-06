@@ -1,0 +1,32 @@
+\chapter{Methodology}
+\label{chap:methods}
+
+With this thesis, we aim to measure and compare the LLM inference performance and energy efficiency of a diverse set of accelerated servers across multiple deployment scenarios. However, the heterogeneity of models, hardware, and software stacks, as well as the numerous interacting factors that influence performance, makes this task non-trivial. To structure our analysis, we begin by identifying the principal factors that impact LLM inference performance, focusing on four key elements:
+
+\begin{itemize}
+\item \textbf{Sequence length}: the number of input and output tokens generated. We ensure consistency by using the same inference dataset (Section \ref{chap:methods:sec:dataset}) for all experiments.
+\item \textbf{Model architecture}: the characteristics of the LLM being served. We address the heterogeneity of LLM models by evaluating a diverse set of popular open-source models and examining their characteristics in relation to performance. In particular, we analyze:
+\begin{itemize}
+\item \textbf{Model Size}: the total number of model parameters;
+\item \textbf{Sparsity}: the proportion of parameters that are sparsely activated, in the case of Mixture-of-Experts (MoE) models.
+\item \textbf{Quantization}: the numerical format used for model weights and activations. Wherever supported, we compare 16-bit precision with 8-bit precision.
+\end{itemize}
+\item \textbf{Parallelism}: The number of sequences processed in parallel (\textbf{batch size}) and the number of devices used for inference greatly impact performance, depending on the parallel serving strategy chosen (\textbf{Data, Pipeline, Tensor or Expert Parallelism}).
+\item \textbf{Inference Engine}: the software stack influences performance. We maintain consistency by using the same inference engine (vLLM \cite{kwon2023efficient}) across all the GPU servers. Dataflow accelerators, on the other hand, require an architecture-specific engine.
+\end{itemize}
+
+\input{sections/4_methodology/0_perf_model}
+\section{Experimental Setup}
+\label{chap:exp}
+
+In this Section, we describe in detail the experimental setup we used to evaluate LLM inference.
+The subsections are organized as follows: 
+\ref{chap:methods:sec:metrics} discusses the performance metrics used to compare the different accelerators, 
+\ref{chap:methods:sec:dataset} describes the inferense dataset used,
+\ref{chap:methods:sec:dataset} describes the inference dataset, and finally \ref{chap:methods:sec:single}, \ref{chap:methods:sec:multi}, and   \ref{chap:methods:sec:dsa} present the methodology of the single-GPU, multi-GPU and dataflow accelerators experiments.
+\input{sections/4_methodology/1_inference_dataset}
+\input{sections/4_methodology/1_metrics}
+\input{sections/4_methodology/2_models}
+\input{sections/4_methodology/3_single}
+\input{sections/4_methodology/4_multi}
+\input{sections/4_methodology/5_dsa}

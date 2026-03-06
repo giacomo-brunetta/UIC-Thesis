@@ -1,0 +1,65 @@
+\chapter{Related Work}
+\label{chap:related}
+
+As large language model (LLM) inference becomes an increasingly significant contributor to datacenter energy consumption, research on performance and energy efficiency has grown substantially. This section surveys the most relevant work across GPU-based LLM inference, Mixture-of-Experts (MoE) model evaluation, and dataflow accelerator performance.
+
+\section{LLM Inference on GPUs}
+
+Chitty-Venkata et al. ~\cite{LLMInfbench} provides one of the most comprehensive evaluations of modern LLM inference and serves as the primary point of reference for this thesis. The benchmark examines several major dimensions of inference performance.
+
+First, it evaluates a broad set of model architectures, covering both dense and Mixture-of-Experts models from the LLaMA, Mistral, and Qwen families. The comparison spans two parameter scales: 7B models (LLaMA-2-7B, LLaMA-3-8B, Mistral-7B, Qwen-2-7B) and 70B–72B models (LLaMA-2-70B, LLaMA-3-70B, Mixtral-8x7B, Qwen-2-72B).
+
+Second, the study analyzes token-generation parameters, including input length, output length, and batch size, assessing how these factors affect both latency and throughput.
+
+Third, it compares performance across multiple hardware platforms, including NVIDIA A100, H100, and GH200 GPUs, as well as SambaNova SN40L and Habana Gaudi2 dataflow accelerators.
+
+Fourth, it measures performance across different inference frameworks, such as vLLM, DeepSpeed-MII, llama.cpp, and TRT-LLM, enabling a cross-stack comparison.
+
+Finally, the benchmark studies the effect of several optimization techniques, including KV caching, quantization, and other runtime-level optimizations.
+
+Performance is characterized using key metrics: time to first token (TTFT), inter-token latency (ITL), throughput (input and output tokens multiplied by batch size per unit latency), and performance per watt based on average power consumption.
+
+Building upon this work, our study places a stronger emphasis on energy efficiency and multi-GPU scaling behavior, while also extending the evaluation to dataflow accelerators.
+
+A complementary study from the same authors ~\cite{chitty2025moe} analyzes the performance of several Mixture-of-Experts LLMs and vision–language models (VLMs), focusing on the architectural factors that shape their inference characteristics.
+
+
+\section{Energy Efficiency of LLM Inference}
+
+Several works focus specifically on the energy usage of LLM inference on modern GPUs.  
+
+Fernandez et al.~\cite{fernandez2025energy} examine the impact of optimizations such as continuous batching, kernel compilation, and PagedAttention.  
+
+Wilhelm et al.~\cite{wilhelm2025beyond} analyze test-time compute strategies—including majority voting and Chain-of-Thought prompting—exploring the efficiency–accuracy trade-off.  
+
+Wilkins et al.~\cite{wilkins2024offline} characterize energy and performance across seven LLMs running on NVIDIA A100 GPUs.  
+
+Dynamo-LLM~\cite{stojkovic2025dynamollm} benchmarks six models on H100 GPUs under varied tensor-parallel configurations, with a focus on multi-GPU scaling efficiency.  
+
+Other works investigate GPU frequency scaling as a mechanism to improve the performance–efficiency balance~\cite{maliakel2025investigating, kakolyris2024slo, stojkovic2024towards}.
+
+Unlike these studies, our analysis jointly evaluates performance and energy efficiency across modern GPUs from multiple vendors (NVIDIA, AMD, and Intel), as well as across three dataflow AI accelerators, yielding new insights into LLM inference across diverse deployment environments.
+
+\section{Dataflow Accelerators}
+
+Several studies have examined the performance of dataflow accelerators.  
+Emani et al.\ published two influential works~\cite{Emani2021, Emani2022}.  
+The first compares emerging AI accelerators—including the SambaNova SN10-8R, Cerebras CS-2, Graphcore IPU M-2000, and GroqNode—against the NVIDIA A100 GPU. The workloads include deep learning primitives, MLPerf benchmark models (ResNet, U-Net, BERT), and scientific machine learning applications. This initial study characterizes execution time and computational throughput but does not measure power consumption.
+
+The second study evaluates LLM inference and training performance across five dataflow accelerators, comparing them against NVIDIA A100 and AMD MI250 GPUs using two LLMs (GPT-2 XL and GenSLM).
+
+Ferdaus et al.~\cite{ferdaus2025evaluating} further examine BERT training and inference performance, as well as energy efficiency, on four dataflow accelerators, again comparing the results with those of the NVIDIA A100.  
+
+While these studies form the foundation of our analysis, they primarily evaluate older LLMs that no longer reflect the current state of the art. Our work, therefore, updates and extends this line of research using modern LLM architectures and contemporary accelerator platforms.
+
+\section{MLPerf}
+
+MLPerf is the most widely used benchmark suite for evaluating the performance of systems on machine learning workloads. Introduced in 2018 by the MLCommons organization—a consortium formed by industry and academic partners—it provides standardized, open, and reproducible methodologies for comparing hardware and software platforms. The suite comprises three major components: MLPerf Training, MLPerf Inference, and MLPerf Power.
+
+MLPerf Training~\cite{mattson2020mlperf} focuses on end-to-end training performance, reporting the time required for a system to train a model to a specified target accuracy. The workloads correspond to the same models used in the Inference benchmark, enabling consistent cross-comparisons between training and inference performance.
+
+MLPerf Inference~\cite{reddi2020mlperf} evaluates the performance of systems running pre-trained machine learning models across tasks such as image classification, object detection, natural language processing, and recommendation. It measures both latency and throughput across a variety of deployment scenarios, including datacenter, edge, and mobile environments. To capture real-world usage conditions, MLPerf Inference defines four load-generator scenarios. The single-stream scenario processes a single request stream with batch size one, emphasizing strict latency constraints. The multi-stream scenario also uses a single stream but with a fixed arrival pattern and batch sizes greater than one. The server scenario models unpredictable request arrivals across multiple streams while maintaining batch size one. Finally, the offline scenario captures throughput-oriented batch processing where all inputs are available in advance, and latency is not a limiting factor.
+
+For language workloads—those most relevant to our study—the current MLPerf Inference benchmark includes six LLMs: BERT-Large, GPT-J, Llama2-70B, Llama3-405B, Mixtral-8x7B, and DeepSeekR1. These models span parameter sizes from 340M to 670B and include both dense and Mixture-of-Experts architectures, enabling comparisons that reflect contemporary large-scale LLM deployments.
+
+MLPerf Power~\cite{Tschand2024} provides the standardized methodology for measuring energy consumption during MLPerf Training and Inference workloads. The guidelines emphasize that commonly used metrics such as Thermal Design Power (TDP) and Power Supply Unit (PSU) ratings do not accurately represent real system-level power usage, as they incorporate significant safety margins and fail to capture dynamic fluctuations in power draw. MLPerf Power, therefore, offers more precise measurement requirements to support reliable assessments of energy efficiency across diverse hardware platforms.

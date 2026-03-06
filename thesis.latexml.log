@@ -1,0 +1,162 @@
+(Loading /usr/share/perl5/LaTeXML/Package/TeX.pool.ltxml...
+(Loading /usr/share/perl5/LaTeXML/Package/eTeX.pool.ltxml... 0.00 sec)
+(Loading /usr/share/perl5/LaTeXML/Package/pdfTeX.pool.ltxml... 0.00 sec) 0.06 sec)
+latexmlc (LaTeXML version 0.8.6)
+invoked as [/usr/bin/latexmlc -dest=thesis.epub thesis.tex]
+processing started Fri Mar  6 00:04:55 2026
+(Digesting TeX thesis...
+(Processing content /thesis/thesis.tex...
+(Loading /usr/share/perl5/LaTeXML/Package/LaTeX.pool.ltxml...
+(Loading /usr/share/perl5/LaTeXML/Package/textcomp.sty.ltxml...
+(Processing definitions /usr/share/texlive/texmf-dist/tex/latex/base/ts1enc.dfu... 0.01 sec) 0.05 sec) 0.14 sec)
+(Loading /usr/share/perl5/LaTeXML/Package/amsbook.cls.ltxml...
+(Loading /usr/share/perl5/LaTeXML/Package/book.cls.ltxml... 0.00 sec)
+(Loading /usr/share/perl5/LaTeXML/Package/ams_support.sty.ltxml...
+(Loading /usr/share/perl5/LaTeXML/Package/amsmath.sty.ltxml...
+(Loading /usr/share/perl5/LaTeXML/Package/amsbsy.sty.ltxml...
+(Loading /usr/share/perl5/LaTeXML/Package/amsgen.sty.ltxml... 0.00 sec) 0.00 sec)
+(Loading /usr/share/perl5/LaTeXML/Package/amstext.sty.ltxml... 0.00 sec)
+(Loading /usr/share/perl5/LaTeXML/Package/amsopn.sty.ltxml... 0.00 sec) 0.02 sec)
+(Loading /usr/share/perl5/LaTeXML/Package/amsthm.sty.ltxml... 0.00 sec)
+(Loading /usr/share/perl5/LaTeXML/Package/amsfonts.sty.ltxml... 0.00 sec)
+(Loading /usr/share/perl5/LaTeXML/Package/makeidx.sty.ltxml... 0.00 sec) 0.03 sec) 0.04 sec)
+(Loading /usr/share/perl5/LaTeXML/Package/fontenc.sty.ltxml...
+(Loading /usr/share/perl5/LaTeXML/Package/t1enc.def.ltxml...
+(Processing definitions /usr/share/texlive/texmf-dist/tex/latex/base/t1enc.def...
+(Processing definitions /usr/share/texlive/texmf-dist/tex/latex/base/t1enc.dfu... 0.03 sec)
+(Loading /usr/share/perl5/LaTeXML/Package/t1.fontmap.ltxml... 0.00 sec) 0.06 sec) 0.06 sec) 0.06 sec)
+(Loading /usr/share/perl5/LaTeXML/Package/inputenc.sty.ltxml...
+(Loading /usr/share/perl5/LaTeXML/Package/utf8.def.ltxml... 0.00 sec) 0.00 sec)
+(Loading /usr/share/perl5/LaTeXML/Package/babel.sty.ltxml...
+(Processing definitions /usr/share/texlive/texmf-dist/tex/generic/babel/babel.sty...
+(Processing definitions /usr/share/texlive/texmf-dist/tex/generic/config/language.def... 0.00 sec)
+(Loading /usr/share/perl5/LaTeXML/Package/txtbabel.def.ltxml...
+(Processing definitions /usr/share/texlive/texmf-dist/tex/generic/babel/txtbabel.def... 0.00 sec)
+(Loading /usr/share/perl5/LaTeXML/Package/babel_support.sty.ltxml... 0.00 sec) 0.01 sec)
+(Processing definitions /usr/share/texlive/texmf-dist/tex/generic/babel-english/english.ldf... 0.05 sec) 0.51 sec) 0.51 sec)
+(Loading /usr/share/perl5/LaTeXML/Package/latexml.sty.ltxml... 0.00 sec)
+(Loading /usr/share/perl5/LaTeXML/Package/amssymb.sty.ltxml... 0.01 sec)
+(Loading /usr/share/perl5/LaTeXML/Package/graphicx.sty.ltxml...
+(Loading /usr/share/perl5/LaTeXML/Package/graphics.sty.ltxml... 0.00 sec) 0.01 sec)
+(Loading /usr/share/perl5/LaTeXML/Package/subcaption.sty.ltxml...
+(Loading /usr/share/perl5/LaTeXML/Package/caption.sty.ltxml... 0.00 sec) 0.01 sec)
+(Loading /usr/share/perl5/LaTeXML/Package/comment.sty.ltxml... 0.00 sec)
+(Loading /usr/share/perl5/LaTeXML/Package/geometry.sty.ltxml...
+(Loading /usr/share/perl5/LaTeXML/Package/keyval.sty.ltxml...
+(Processing definitions /usr/share/texlive/texmf-dist/tex/latex/graphics/keyval.sty... 0.01 sec) 0.01 sec)
+(Loading /usr/share/perl5/LaTeXML/Package/ifpdf.sty.ltxml... 0.00 sec)
+(Loading /usr/share/perl5/LaTeXML/Package/ifvtex.sty.ltxml... 0.00 sec)
+(Loading /usr/share/perl5/LaTeXML/Package/ifxetex.sty.ltxml... 0.00 sec) 0.01 sec)
+(Loading /usr/share/perl5/LaTeXML/Package/setspace.sty.ltxml... 0.00 sec)
+(Loading /usr/share/perl5/LaTeXML/Package/hyperref.sty.ltxml...
+(Loading /usr/share/perl5/LaTeXML/Package/nameref.sty.ltxml... 0.00 sec)
+(Loading /usr/share/perl5/LaTeXML/Package/url.sty.ltxml... 0.00 sec) 0.02 sec)
+(Processing content /thesis/sections/other/__preamble.tex...
+(Loading /usr/share/perl5/LaTeXML/Package/booktabs.sty.ltxml... 0.00 sec)
+(Loading /usr/share/perl5/LaTeXML/Package/newlfont.sty.ltxml...
+(Loading /usr/share/perl5/LaTeXML/Package/latexsym.sty.ltxml... 0.00 sec) 0.00 sec)
+(Loading /usr/share/perl5/LaTeXML/Package/euler.sty.ltxml... 0.00 sec)
+(Loading /usr/share/perl5/LaTeXML/Package/xspace.sty.ltxml... 0.00 sec)
+(Loading /usr/share/perl5/LaTeXML/Package/float.sty.ltxml... 0.00 sec)
+(Loading /usr/share/perl5/LaTeXML/Package/flushend.sty.ltxml... 0.00 sec)
+(Loading /usr/share/perl5/LaTeXML/Package/footnote.sty.ltxml... 0.00 sec)
+(Loading /usr/share/perl5/LaTeXML/Package/enumitem.sty.ltxml... 0.01 sec)
+(Loading /usr/share/perl5/LaTeXML/Package/xcolor.sty.ltxml...
+(Loading /usr/share/perl5/LaTeXML/Package/color.sty.ltxml... 0.00 sec)
+(Processing definitions /usr/share/texlive/texmf-dist/tex/latex/graphics/dvipsnam.def... 0.03 sec) 0.06 sec)
+(Loading /usr/share/perl5/LaTeXML/Package/cite.sty.ltxml... 0.00 sec)
+(Loading /usr/share/perl5/LaTeXML/Package/multirow.sty.ltxml... 0.00 sec)
+(Loading /usr/share/perl5/LaTeXML/Package/tabularx.sty.ltxml...
+(Loading /usr/share/perl5/LaTeXML/Package/array.sty.ltxml... 0.00 sec) 0.00 sec) 0.12 sec)
+(Processing content /thesis/sections/other/__commands.tex... 0.00 sec)
+Info:unexpected:titlepage When using titlepage, Frontmatter will not be well-structured
+	at thesis.tex; line 150 col 0 - line 150 col 17
+(Processing content /thesis/sections/other/_1_dedication.tex... 0.00 sec)
+(Processing content /thesis/sections/other/_2_acknowledgement.tex... 0.02 sec)
+(Processing content /thesis/sections/1_introduction/0_index.tex...
+(Processing content /thesis/sections/1_introduction/1_goals.tex... 0.13 sec)
+(Processing content /thesis/sections/1_introduction/2_structure.tex... 0.03 sec) 0.17 sec)
+(Processing content /thesis/sections/2_background/0_index.tex...
+(Processing content /thesis/sections/2_background/1_llms.tex... 0.06 sec)
+(Processing content /thesis/sections/2_background/2_serving.tex... 0.25 sec) 0.32 sec)
+(Processing content /thesis/sections/3_hardware/0_index.tex...
+(Processing content /thesis/sections/3_hardware/1.0_intro.tex... 0.04 sec)
+(Processing content /thesis/sections/3_hardware/1.1_gpus.tex... 0.40 sec)
+(Processing content /thesis/sections/3_hardware/1.2_tpu.tex... 0.31 sec)
+(Processing content /thesis/sections/3_hardware/1.3_dflow.tex... 0.21 sec) 0.96 sec)
+(Processing content /thesis/sections/4_methodology/0_index.tex...
+(Processing content /thesis/sections/4_methodology/0_perf_model.tex...
+[Skipped comment (10 lines)]
+[Skipped comment (18 lines)]
+ 0.30 sec)
+(Processing content /thesis/sections/4_methodology/1_inference_dataset.tex... 0.03 sec)
+(Processing content /thesis/sections/4_methodology/1_metrics.tex... 0.07 sec)
+(Processing content /thesis/sections/4_methodology/2_models.tex...
+[Skipped comment (30 lines)]
+[Skipped comment (7 lines)]
+ 0.10 sec)
+(Processing content /thesis/sections/4_methodology/3_single.tex... 0.15 sec)
+(Processing content /thesis/sections/4_methodology/4_multi.tex... 0.11 sec)
+(Processing content /thesis/sections/4_methodology/5_dsa.tex... 0.05 sec) 0.92 sec)
+(Processing content /thesis/sections/6_results/0_index.tex...
+(Processing content /thesis/sections/6_results/1_single.tex...
+[Skipped comment (6 lines)]
+ 0.27 sec)
+(Processing content /thesis/sections/6_results/2_multi.tex...
+[Skipped comment (7 lines)]
+ 0.32 sec)
+(Processing content /thesis/sections/6_results/3_dsa.tex... 0.22 sec) 0.82 sec)
+(Processing content /thesis/sections/7_related/0_index.tex... 0.18 sec)
+(Processing content /thesis/sections/8_conclusions/0_index.tex...
+(Processing content /thesis/sections/8_conclusions/1_conclusion.tex... 0.05 sec) 0.06 sec)
+(Processing content /thesis/sections/other/_5_vita.tex... 0.10 sec) 4.64 sec) 4.71 sec)
+(Building...
+(Loading compiled schema /usr/share/perl5/LaTeXML/resources/RelaxNG/LaTeXML.model... 0.00 sec) 3.74 sec)
+(Rewriting... 0.02 sec)
+(Math Parsing 168 formulae ......
+Warning:not_parsed:NUMBER>MULOP MathParser failed to match rule 'Anything'
+	at 1.1_gpus.tex; line 25 col 187 - line 25 col 196
+	In "$2.3\times$"
+	2.3[[NUMBER]]
+	        > Ã[[MULOP]]
+Warning:not_parsed:NUMBER>MULOP MathParser failed to match rule 'Anything'
+	at 1.1_gpus.tex; line 25 col 226 - line 25 col 235
+	In "$1.7\times$"
+	1.7[[NUMBER]]
+	        > Ã[[MULOP]]
+Warning:not_parsed:NUMBER>MULOP MathParser failed to match rule 'Anything'
+	at 1.1_gpus.tex; line 25 col 360 - line 25 col 367
+	In "$4\times$"
+	4[[NUMBER]]
+	        > Ã[[MULOP]]
+Warning:not_parsed:NUMBER.MULOP.UNKNOWN>MULOP MathParser failed to match rule 'Anything'
+	at 0_perf_model.tex; line 105 col 71 - line 105 col 81
+	In "$1/S\times$"
+	1[[NUMBER]] /[[MULOP]] S[[UNKNOWN]]
+	        > Ã[[MULOP]]
+ 0.63 sec)
+Math parsing succeeded:
+   ltx:XMArg: 180/180
+   ltx:XMath: 164/168
+Symbols assumed as simple identifiers (with # of occurences):
+   'A{italic}' (7), 'B{italic}' (13), 'C{italic}' (8), 'Delta' (25), 'D{italic}' (6), 'E{italic}' (6), 'F{italic}' (13), 'H{italic}' (5), 'I{italic}' (9), 'K{italic}' (4), 'L{italic}' (2), 'M{italic}' (5), 'N{italic}' (21), 'O{italic}' (12), 'P{italic}' (42), 'Q{italic}' (4), 'S{italic}' (9), 'T{italic}' (19), 'U{italic}' (2), 'V{italic}' (7), 'W{italic}' (19), 'a{italic}' (4), 'b{italic}' (19), 'c{italic}' (4), 'd{italic}' (16), 'e{italic}' (13), 'i{italic}' (4), 'k{italic}' (2), 'l{italic}' (3), 'm{italic}' (13), 'n{italic}' (30), 'o{italic}' (6), 'p{italic}' (2), 's{italic}' (2), 't{italic}' (36), 'u{italic}' (2), 'v{italic}' (2)
+Set MATHPARSER_SPECULATE to speculate on possible notations.
+(Finalizing... 0.15 sec)
+Conversion complete: 4 warnings
+(post-processing...
+(Scan OPS/thesis.xhtml processing...
+Scan: DBStatus: 793/0 objects
+ 0.07 sec)
+(CrossRef OPS/thesis.xhtml processing...
+Warning:expected:ids Missing Entry for citation: ainslie2023gqa,yang2024qwen2,koilia2024hardware,chen2020survey,gholami2024ai,iea2025ai,silvano2025survey,Choquette2023,reddi2020mlperf,vllm-fp8-docs-v0_5_4,Lie2023,Emani2022,wilhelm2025beyond,meta2025llama4,dao2022flashattention,Emani2021,fernandez2025energy,cdna2,Hooker2021,stojkovic2025dynamollm,jouppi2018motivation,LLMInfbench,maliakel2025investigating,Prabhakar2024,guo2025deepseek,Norrie2021,liu2024deepseek,cdna3,stojkovic2024towards,choquette2018volta,kurtic2024give,lindholm2008nvidia,grattafiori2024llama,jiang2024mistral,Jouppi2021,radford2018improving,kaplan2020scaling,Choquette2021,kwon2023efficient,artetxe2021efficient,ferdaus2025evaluating,subramanian2024comprehensive,Jia2019,Tschand2024,Smith2024,yang2025qwen3,agrawal2023sarathi,mattson2020mlperf,kachris2025survey,wolf2019huggingface,Evans2022,wilkins2024offline,Kaplan2024,kakolyris2024slo,Loh2023,Abts2022,sambanova,attention_is_all_you_need,Dean2018,patterson2021carbon,Prabhakar2017,gaudi2,Gwennap2019,Gwennap,zheng2023lmsys,emani2024toward,Jouppi2017,gomes2022ponte,kundu2025comparison,chitty2025moe
+	In Post::CrossRef[@0x5b3702cdec90] ->process
+ 0.08 sec)
+(Graphics OPS/thesis.xhtml 18 to process... 0.02 sec)
+(MathML::Presentation OPS/thesis.xhtml 168 to process...
+converted 168 Maths
+ 0.10 sec)
+(XSLT[using LaTeXML-epub3.xsl] OPS/thesis.xhtml processing... 0.15 sec)
+(Writer OPS/thesis.xhtml processing... 0.00 sec) 0.42 sec)
+Post-processing complete: 1 warning
+processing finished Fri Mar  6 00:05:05 2026
+Status:conversion:1

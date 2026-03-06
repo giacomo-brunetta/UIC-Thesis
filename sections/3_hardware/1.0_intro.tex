@@ -1,0 +1,12 @@
+LLM inference is a highly computational task dominated by large-scale matrix–matrix multiplications. This process poses three main challenges:
+\begin{itemize}
+    \item \textbf{Computation}: It requires executing a large number of floating-point operations.
+    \item \textbf{Memory capacity}: It involves storing massive weight and activation matrices.
+    \item \textbf{Memory bandwidth}: It demands frequent loading of large data volumes from memory.
+
+\end{itemize}
+For instance, performing a single forward pass of a 70-billion-parameter model in half precision (16-bit) entails approximately 140 BFLOPs of computation and 140 GB of memory reads.
+
+To address these challenges, researchers have developed various parallel hardware accelerators that combine high memory bandwidth with large-scale parallel computing capabilities. Currently, Graphics Processing Units (GPUs) remain the dominant platform for LLM inference. However, Domain-Specific Architectures (DSAs) are emerging as promising alternatives, designed to provide greater efficiency for AI workloads \cite{chen2020survey, koilia2024hardware, silvano2025survey, kachris2025survey}.
+
+This chapter provides a historical overview of the evolution of data center hardware accelerators used for AI inference, highlighting the key architectural trends shaping today’s computing landscape.

@@ -1,0 +1,121 @@
+\section{Graphic Processing Units}
+\label{chap:background:sec:gpu}
+
+Graphics Processing Units (GPUs) are the most established class of accelerators for large-scale AI inference. They are designed around the \textbf{Single Instruction, Multiple Threads (SIMT) model}, which enables the parallel execution of thousands of lightweight threads. This parallelism makes GPUs highly efficient for the matrix and vector operations central to LLM inference. To support these operations, GPUs use a \textbf{multi-level memory hierarchy} that includes large off-chip DRAM for global storage and faster on-chip SRAM memories shared among thread blocks, ensuring high data throughput.
+
+Modern General-Purpose GPUs (GPGPUs) emerged with NVIDIA’s Tesla architecture (2007) \cite{lindholm2008nvidia}, which transformed GPUs from fixed-function graphics devices into programmable, massively parallel processors. Tesla introduced uniform, fully programmable cores capable of dynamic workload balancing and non-graphics computations. Each GPU integrated 16 Streaming Multiprocessors (SMs), each containing 8 CUDA cores operating under the SIMT model. This architecture executed instructions in groups of 32 threads, known as warps, achieving SIMD-like efficiency while allowing limited control-flow divergence.
+
+Tesla also established the standard GPU memory hierarchy still in use today—comprising per-thread \textbf{local memory}, per-SM \textbf{shared memory}, and \textbf{global DRAM}—along with L1 caches per SM and a unified L2 cache for improved data locality. Complementing this hardware innovation, NVIDIA introduced the \textbf{CUDA} programming model, a C/C++ extension that provides APIs for CPU–GPU coordination, memory management, and thread scheduling. CUDA laid the foundation for general-purpose GPU computing, enabling efficient deployment of parallel workloads such as deep learning inference.
+
+This section presents the architecture of the most relevant data center–level GPUs developed by NVIDIA, AMD, and Intel, highlighting their evolution and design principles for AI inference workloads.
+
+\subsection{NVIDIA GPUs}
+
+Modern NVIDIA AI-oriented GPUs fall in the category of Tensor-Core GPUs. Their distinctive features are the presence of high-speed off-chip HBM memories, as opposed to standard DRAM, and the Tensor Cores, which accelerate matrix-matrix multiplications in mixed precision.
+The NVIDIA P100 was the first to feature HBM memory, while the \textbf{NVIDIA Volta V100} \cite{choquette2018volta} first introduced Tensor Cores, representing a pivotal point in AI hardware.
+In the remainder of this section, we provide a detailed discussion of the architectures of the NVIDIA V100, A100, and H100.
+
+The \textbf{Nvidia Volta V100} is composed of six GPU Processing Clusters (GPCs) and features a total of 80 Streaming Multiprocessors (SMs). Each SM has four processing blocks, each featuring eight double-precision floating-point cores (fp64), sixteen single-precision floating-point cores (FP32), sixteen integer units (int32), two Tensor Cores, and a Special Functional Unit (SFU). The \textbf{Tensor Cores}, a dedicated functional unit that performs a matrix-matrix multiplication and accumulation on 4 x 4 matrices.
+Another major novelty is the unification of the L1 cache and the shared memory. According to the application's needs, the programmer can utilize up to 96 KB of the 128 KB L1 cache as shared memory, reserving the remaining space for caching.
+The chip also offers 6MB of L2 cache, shared by all the GPCs, that acts as an intermediary between the SMs and the off-chip memory, consisting of 16 GB of HBM2 that operates at 0.90 TB/s.
+
+The \textbf{NVIDIA Ampere A100} \cite{Choquette2021} represents a significant advancement over its predecessor, introducing numerous innovations and improvements.
+It contains 108 Streaming Multiprocessors composed of four processing blocks, each featuring eight double-precision functional units, 16 single-precision functional units, 16 integer units, and a third-generation Tensor core.
+Unlike the first-generation Tensor Cores that require FP16 data, A100 Tensor Cores support many data types and offer fine-grained sparsity optimization, which doubles the throughput of sparse matrix multiplication. In particular, they support int4, int8, FP16, bfloat16, FP16, and TF32 data types. Out of those, the Tensor Float (TF32) format is particularly noticeable. TF32 variables have one bit for the exponent, 8 bits for the exponent (like FP32 and bfloat16), and 10 bits for the mantissa (like FP16). Binary, full-precision, and double-precision matrix-matrix multiplications are also possible, but with lower throughput and no support for fine-grained sparsity.
+Unlike the first-generation Tensor Cores that require FP16 data, A100 Tensor Cores support many data types and offer fine-grained sparsity optimization, which doubles the throughput of sparse matrix multiplication, adding up to the $2\times$ that is achieved with dense matrix-matrix multiplications. To match the enhanced throughput, the A100 also improves data delivery to the Tensor Cores by introducing asynchronous copy operations.
+To support larger models, the size of memory is significantly increased: the L2 cache is increased from 6 to 40 MB, and the VRAM is increased from 16 to 40 or 80 GB of HBM2. There is also an improvement of $2.3\times$ in L2 cache throughput and $1.7\times$ in HBM throughput. Additionally, the A100 offers an in-hardware data compression feature that improves bandwidth by up to $4\times$.
+The other novelties of the A100 are the third-generation NVLink, which doubles the throughput compared to the V100, and the Multi-Instance GPU (MIG) feature, which allows support for up to seven independent virtual GPUs on the same physical GPU.
+
+
+The \textbf{NVIDIA Hopper H100} \cite{Choquette2023} represents an ulterior step forward with respect to the NVIDIA Ampere A100, featuring 132 redesigned Streaming Multiprocessors. Each multiprocessor comprises four processing blocks, with each block integrating 16 double-precision units, 32 single-precision units, 16 integer units, and a fourth-generation Tensor Core.
+The renewed Tensor Cores support new data types and double the throughput for previously supported ones (TF32, FP16, bfloat16, int8), with the exception of int4, which is no longer supported. The novelty is represented by support for the FP8 format (8-bit floating point), which can have either five or four bits for the exponent and, respectively, two or three bits for the mantissa.
+As its predecessor, the fourth-generation Tensor Core supports fine-grained sparsity, which offers up to $2\times$ throughput on sparse matrix multiplication.
+The off-chip memory consists of 80 GB of HBM3, offering 50\% faster data transfer compared to the A100. The two cache is increased to 50 MB, and also the L1 cache is increased to 256 KB per SM.
+To improve data locality, the Hopper architecture adds a new level in the CUDA hierarchy: the thread block cluster, which sits between the thread blocks and the grid and consists of up to 16 thread blocks. The cluster can benefit from improved data locality thanks to the new SM-to-SM communication network that allows SMs to access the shared memory of other Streaming Multiprocessors and to synchronize on barriers distributed in shared memory.
+The Hopper Architecture also offers the fourth generation of NVLink and new types of barriers that facilitate asynchronous execution of threads and asynchronous data transfers.
+Together with Hopper, NVIDIA also introduced \textbf{Grace}, a CPU featuring 72 Arm v9.0 cores explicitly designed to be paired with a GPU on a CPU-GPU System on a Chip (SoC). 
+The \textbf{Grace-Hopper GH200} features a Grace CPU and a Hopper H100 GPU interconnected by a 900 GB/s cache coherent interconnection (NVLink-C2C). In total, the SoC has 96 GB of HMB memory and 512 GB of LPDDR5X DRAM. All the memory can be directly accessed by both processors, as they share the same system-wide page table.
+
+\subsection{AMD GPUs}
+
+In 2017, AMD introduced the Instinct MI series, derived from the Vega architecture and designed for scientific computing and AI workloads. In 2020, AMD separated its GPU lineup into RDNA for graphics and CDNA for data center computing, with CDNA architectures removing rendering features and adding dedicated matrix-multiply units similar to NVIDIA’s Tensor Cores. As noted by AMD researchers \cite{Loh2023}\cite{Smith2024}, CDNA designs are closely linked to the AMD EHP concepts developed under the U.S. Department of Energy’s Exascale Computing Program, representing early steps toward exascale-ready CPU–GPU systems.
+
+The \textbf{AMD Instinct MI100} is the first CDNA GPU.
+It features 120 Compute Units (CU) organized in four arrays. CU features both scalar and vector capabilities, thanks to dedicated register files, execution units, and cache for both scalar and vector operations. Vector execution units execute 64-wide wavefronts (similar to NVIDIA warps) over four cycles, thanks to a 16-wide SIMD vector pipeline that operates on both single- and double-precision data types.
+The novelty of CDNA CUs lies in the introduction of Matrix Fused Multiply-Add (MFMA) units, which, similar to NVIDIA Tensor Cores, perform matrix-matrix multiplications. The supported data types are FP32, FP16, bfloat16, and int8, while the output is either in FP32 or int32 format. The major shortcoming of this generation of MFMAs is the fact that bfloat16 matrix-matrix multiplications have half the throughput compared to FP16 ones.
+The memory hierarchy of CDNA consists of the scalar and vector data caches of CUs, an 8 MB L2 cache shared by all CUs, and 32 GB of off-chip HMB2 memory that operates at 1.23 TB/s.
+The MI100 is also the first card to feature AMD's Infinity Fabric technology that allows inter-GPU communication like NVIDIA's NVLink.
+
+\textbf{AMD CNDA 2:} The second generation of AMD CDNA cards represents an important step forward in AMD's GPU design.
+The basic building block of CDNA 2 GPUs is called the Graphics Compute Die (GCD). Each GCD features four arrays of 28 compute units, totaling 112 (with 104 active in the MI210 and MI250, and 110 active in the MI250X). CDNA 2 introduces the concept of \textbf{multi-die GPUs}, significantly enhancing computational power. While the MI210 features a single GCD, the MI250 and MI250X are equipped with two GCDs, effectively doubling both the computational performance and memory capacity within a single board.
+The Compute Units feature includes scalar, vector, and matrix cores. Vector cores operate on 64-wide wavefronts with 16-wide pipelines, supporting both single- and double-precision data types. Compared to its predecessor, the CDNA 2 Compute Units improve double-precision performance by a factor of two and support the new packed floating-point data type, which allows for faster throughput on floating-point operations.
+Additionally, the matrix units undergo significant improvements, doubling the throughput for bfloat16 matrix-matrix multiplication to match the FP16 throughput and introducing support for double-precision matrices. 
+In addition to the data types, the supported matrix shapes of the matrices have also changed. The first generation supported the product of two 4 x 4 matrices, while the second generation added support for a 16 x 16 matrix times a 16 x 4 matrix.
+Regarding memory, each GCD features 8 MB of L2 cache and 64 GB of HBM2e memory (1.6 TB/s), which doubles the memory at both levels compared to CDNA 1.
+A major innovation of CDNA 2 is the adoption of an innovative caching system that enables a unique memory addressing space for both the CPU and GPU, simulating an APU system where no CPU-GPU data transfers are necessary. 
+
+\textbf{AMD CNDA 3:} The third generation of CDNA cards adopts an even more advanced approach to dense integration than CDNA 2, combining multiple dies within a single chip. This design realizes the 12-year-old AMD vision of a heterogeneous APU\cite{Smith2024}, incorporating both CPUs and GPUs on the same chip. The  DNA 3 family features two cards: the MI300X and the MI300A. The  I300X features eight accelerator complex dies (XCDs), similar to CDNA 2 GCDs, while the MI300A features six XCDs and three CPU complex dies (CCDs). 
+The XCD features 40 CUs (38 active) and a set of shared resources, including the scheduler and four Asynchronous Compute Engines (ACE) that assign computing tasks to the Compute Units (CUs). The CUs also share 4 MB of L2 cache and have 32 KB of L1 cache each.
+The biggest improvement compared to the previous generation is in the Matrix Cores, which offer improved performance compared to the previous generation and support new data types (Tensor Float and FP8).
+Another important difference from the previous generation is the introduction of a new level of cache called Infinity cache, which sits between the off-chip memory and the on-chip L2 cache. The off-chip memory also underwent significant improvement, offering 128 GB of HMB3 memory (5.3 TB/s) on the MI300A and 192 GB on the MI300X. Similar to CDNA 2, CDNA 3 provides a unique memory addressing space shared by the CPU and the GPU, with the notable difference that in the MI300A APU, the memory is not only logically but also physically shared between the CPU and the GPU.
+
+\subsection{Intel GPUs}
+
+The Intel Xe GPU lineup, formerly known as Intel Ponte Vecchio \cite{gomes2022ponte}, comprises three models: the Intel Max 1100, Intel Max 1350, and Intel Max 1550. The latter powers the Aurora Supercomputer.
+
+The \textbf{Intel Max 1550} is a multi-tile GPU featuring two Xe-stacks. Each Xe-stack contains four Xe-slices, providing a total of 64 Xe-cores, 64 ray-tracing units, and one media engine. Every Xe-core integrates eight vector engines (512-bit wide) and eight matrix engines (4096-bit wide). The vector engines support FP16, FP32, and FP64 data formats, while the matrix engines handle int8, FP16, and bfloat16 precisions.
+
+In terms of memory, each Xe-core includes 512 KB of SRAM, which functions as shared memory or L1 cache. Each Xe-stack also incorporates 204 MB of shared L2 cache.
+
+\ref{tab:gpus} summarizes all the architectural features of the modern AI GPUs discussed in this section.
+
+\begin{table}[h!]
+\centering
+\footnotesize
+\caption{Datacenter-level GPUs from Nvidia, AMD, and Intel.}
+\scriptsize
+\begin{tabularx}{\textwidth}{|c|c|c|c|c|c|c|c|}
+\cline{1-8}
+\textbf{Vendor} & \textbf{Name} & \textbf{Year} & \textbf{Cores} & \textbf{TFLOPS} & \multicolumn{2}{c|}{\textbf{Memory}} & \textbf{TDP} \\
+\cline{6-7}
+ & & & & & \textbf{Cache} & \textbf{RAM} & \\
+\cline{1-8}
+\multirow{5}{*}{\textbf{NVIDIA}}
+ & \textbf{V100}  & 2017 &  80 SM  & \makecell[l]{TF32: 125} & \makecell[l]{L1: 128 KB \\ L2: 16 MB } & \makecell[c]{HBM2: 32 GB\\ 0.90 TB/s} & 400 W \\
+\cline{2-8}
+ & \textbf{A100}  & 2020 & 108 SM  & \makecell[l]{TF32: 156\\FP16: 312} & \makecell[l]{L1: 164 KB \\ L2: 40 MB } & \makecell[c]{HBM2e: 80 GB\\ 2.03 TB/s } & 400 W \\
+\cline{2-8}
+ & \textbf{H100}  & 2022 & 132 SM  & \makecell[l]{TF32: 989 \\FP16: 1979\\FP8 : 3958} & \makecell[l]{L1: 256 KB \\ L2: 50 MB } & \makecell[c]{HBM3: 80 GB\\ 3.35 TB/s} & 700 W \\
+\cline{2-8}
+ & \textbf{GH200} & 2023 & 132 SM  & \makecell[l]{TF32: 989 \\FP16: 1979\\FP8 : 3958} & \makecell[l]{L1: 256 KB \\ L2: 50 MB } & \makecell[c]{HBM3: 96 GB\\ 3.9 TB/s} & 450 W \\
+\cline{2-8}
+ %& \textbf{GB100}  & 2025 & 144 SM & \makecell[l]{TF32: \\FP16:,FP8,FP4} & \makecell[l]{L1: 256 KB \\ L2: 50 MB} & \makecell[l]{HBM3e: 96 GB\\ } & 1000 W \\
+\cline{1-8}
+\multirow{4}{*}{\textbf{AMD}}
+ & \textbf{MI100}  & 2020 & 120 CU  & \makecell[l]{FP32: 23\\FP16: 185} & \makecell[l]{L1: 16 KB \\ L2: 8 MB } & \makecell[c]{HBM2e: 32 GB\\ 1.2 TB/s} & 560 W \\
+\cline{2-8}
+ & \textbf{MI250}  & 2021 & 220 CU  & \makecell[l]{FP32: 90\\FP16: 362} & \makecell[l]{L1: 16 KB \\ L2: 16 MB } & \makecell[c]{HBM2e: 64 GB\\ 3.2 TB/s} & 500 W \\
+\cline{2-8}
+ & \textbf{MI300X} & 2023 & 304 CU  & \makecell[l]{TF32: 654\\FP16: 1307\\FP8 : 2615} & \makecell[l]{L1: 32 KB \\ L2: 4 MB \\ L3: 256 MB } & \makecell[c]{HBM3: 192 GB\\ 5.3 TB/s} & 750 W \\
+ \cline{2-8}
+ & \textbf{MI300A} & 2023 & 228 CU  & \makecell[l]{TF32: 490\\FP16: 980\\FP8 : 1961} & \makecell[l]{L1: 32 KB \\ L2: 4 MB \\ L3: 256 MB } & \makecell[c]{HBM3: 128 GB\\ 5.3 TB/s} & 760 W \\
+\cline{1-8}
+\multirow{1}{*}{\textbf{Intel}} 
+ & \textbf{MAX 1550} & 2023 & 128 Xe  & \makecell[l]{TF32: \\FP16:} & \makecell[l]{L1: 64 KB \\ L2: 408 MB } & \makecell[c]{HBM2e: 128 GB\\ 3.28 TB/s} & 600 W \\
+\cline{1-8}
+\end{tabularx}
+\label{tab:gpus}
+\end{table}
+
+\subsection{GPU limitations: the memory wall}
+
+As discussed earlier, Graphics Processing Units (GPUs) are the most widespread type of hardware accelerator for LLM inference. Their success stems from their ability to perform massive numbers of floating-point operations in parallel, which is essential for deep neural network (DNN) training and inference. By scaling out the number of cores, GPUs have sustained performance growth despite the slowdown in transistor miniaturization and the onset of dark silicon.
+
+However, GPUs often fail to reach their theoretical peak throughput during large language model (LLM) inference because these workloads are typically \textit{memory-bound}. As shown in Table~\ref{tab:gpus}, GPU compute throughput (in FLOPS) exceeds memory bandwidth by up to two orders of magnitude, meaning that data transfer between memory and compute units dominates latency and limits overall performance.
+
+Gholami et al.~\cite{gholami2024ai} highlight that this imbalance is widening over time. While floating-point performance has tripled every two years, memory bandwidth has increased by only about 1.6$\times$ per year.
+This growing disparity between computation and data movement is known as the \textbf{memory wall}~\cite{gholami2024ai}.
+
+To mitigate this limitation, researchers have developed \textit{Domain-Specific Architectures (DSAs)} designed to minimize data transfer during DNN inference and training~\cite{Hooker2021, Dean2018}. The first prominent example was Google’s \textbf{Tensor Processing Unit (TPU)}~\cite{Jouppi2017}, which demonstrated how customized architectures can achieve substantial gains in both speed and energy efficiency.
+
+\newpage

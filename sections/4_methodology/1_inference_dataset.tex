@@ -1,0 +1,11 @@
+\subsection{Inference Dataset}
+\label{chap:methods:sec:dataset}
+
+In the Section \ref{chap:methods:sec:model}, we discussed that the number of input and output tokens directly influences the performance of LLM inference, as it linearly relates to the number of forward passes to be performed, and it influences the context-dependent part of the computation and the size of the KV cache.
+
+To replicate a realistic chatbot scenario in terms of input and output lengths, we use the MLSysChat1M dataset \cite{zheng2023lmsys}, a collection of 1 million real-world, multi-turn conversations with chatbots.
+MLSysChat1M uses the OpenAI chat schema, a standard format for API-based inference. Each conversation is represented as a sequence of turns assigned to “user,” “system,” or “assistant” roles.
+
+During preprocessing for our benchmark, we transform chat logs into inference requests by removing the final assistant response from each conversation and setting the output length to match the original response's length. To achieve this, we tokenize the ground-truth response to obtain its exact token count, then constrain generation by setting both the minimum and maximum token limits to this value, ensuring the model produces a reply of identical length.
+
+From the MLSysChat1M dataset, we select the first 1,000 conversations for our analysis, filtering to include only those with a total character count between 64 and 20,000. This range excludes trivial or empty samples while staying within the models’ maximum context length, ensuring that the resulting distribution of prompt and answer lengths remains plausible for evaluating performance and energy efficiency.

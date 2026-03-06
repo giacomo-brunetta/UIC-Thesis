@@ -1,0 +1,69 @@
+\subsection{AI Accelerators - Dataflow}\label{chap:background:sec:dflow}
+
+This section describes the second class of Domain-Specific Accelerators for LLM inference, which consists of \textbf{dataflow accelerators}. \ref{tab:dflow} summarizes the main features of the architectures discussed in this section, namely SambaNova RDAs, Cerebras WSE, and GraphCore IPUs.
+
+\subsection{SambaNova RDA}
+
+SambaNova Systems, founded in 2017, is a startup that develops dataflow accelerators for DNN inference and training, drawing heavily from the prototype architecture Plasticine \cite{Prabhakar2017}.
+
+\textbf{Plasticine} is a coarse-grained reconfigurable architecture (CGRA) that exploits spatial parallelism to efficiently execute parallel patterns such as map and reduce. Unlike FPGAs, which are fully reconfigurable at the bit level, CGRAs utilize larger processing elements, such as ALUs and DSPs, that operate at the word level. Their simpler, structured interconnects trade flexibility for denser compute, higher power efficiency, and clock speeds up to an order of magnitude greater than FPGAs. Plasticine is organized as a grid of two main components: \textbf{Pattern Compute Units (PCUs)} and \textbf{Pattern Memory Units (PMUs)}. PCUs implement parallel patterns via a multi-stage, reconfigurable SIMD pipeline with reduction and shift networks that support loop-level and pipeline parallelism. PMUs manage on-chip memory distribution with multiple SRAM banks matching PCU lanes and support configurable banking modes for efficient access. Off-chip DRAM is accessed through \textbf{Address Generators (AGs)}—enhanced PMUs with FIFOs for requests and responses—while \textbf{Coalescing Units} minimize memory traffic by merging sparse accesses. Plasticine’s operation is coordinated through a hierarchical control scheme using sequential, pipelined, and streaming controllers to minimize synchronization. When applications are mapped to the architecture, their computation pipelines are unrolled onto virtual PCUs and PMUs, which are then assigned to physical units for execution.
+
+Similarly to Plasticine, SambaNova \textbf{Reconfigurable Dataflow Architecture (RDA)} \cite{sambanova} features a tiled array of Pattern Compute Units (PCUs) and Pattern Memory Units (PMUs) connected through a switching fabric, with Address Generator Units (AGUs) and Coalescing Units (CUs) handling off-chip memory access. Its main innovation, \textbf{SambaFlow}, integrates with frameworks like PyTorch and TensorFlow, enabling seamless model import. The Dataflow Graph Analyzer extracts computation and communication requirements to map tasks efficiently to hardware, while the Dataflow Compiler optimizes these graphs through pipelining and parallelization. A template compiler allows users to define new operators, which are converted into optimized Spatial Templates. Finally, RDA supports concurrent execution of multiple applications or VMs, enabling complex mixed workloads such as preprocessing, training, and post-processing.
+
+The first-generation SambaNova RDU, the \textbf{Cardinal SN10-8R}, integrated eight RDUs, each containing 640 PCUs and 640 PMUs. Each RDU supported up to six channels of 256 GB DRAM, providing between 3 TB and 12 TB of configurable off-chip memory. Its successor, the \textbf{Cardinal SN30-8R}, also featured eight upgraded RDUs, each with 1,284 PCUs and PMUs and a total of 640 MB of on-chip memory, paired with 1 TB of DRAM per RDU. In 2024, SambaNova introduced its inference accelerator, targeted at LLM inference. The \textbf{SN40L-16} \cite{Prabhakar2024}, comprising 16 RDUs, each including 1,040 PCUs and PMUs, 520 MB of on-chip SRAM, and access to 64 GB of HBM plus 768 GB of DDR off-chip memory. The introduction of HBMs increases substantially LLM inference due to the compute-bound nature of this task.
+
+\subsection{Cerebras WSE}
+Cerebras is a startup founded in 2015 that builds hardware accelerators for DNN training and inference. Currently, they presented three systems: the CS-1 (2019) featuring the WSE-1, the CS-2 (2021) featuring the WSE-2, and the CS-3 featuring the WSE-3 (2024).
+
+The Wafer-Scale Engine (WSE) is the first processor as large as an entire silicon wafer (462.25~cm$^2$), enabling an unprecedented number of cores—400{,}000 in WSE-1, 850{,}000 in WSE-2, and 900{,}000 in WSE-3. Each core is a general-purpose processor capable of arithmetic, logic, and control operations, with domain-specific support for tensor computation through hardware state machines and Data Structure Registers (DSRs) that store tensor metadata such as shape, size, and length. The 64-bit data path includes four fused FPMAC units that operate on FP16 or bfloat16 data, providing high throughput for tensor arithmetic.
+
+Unlike most accelerators, the WSE employs a fully distributed memory system to maximize data locality and bandwidth. Each core contains a 48 KB scratchpad SRAM, resulting in a total on-chip memory of 44 GB for the WSE-3. There is no shared DRAM; instead, inter-core communication occurs through a 2D mesh of routers, each with four directional links connecting to neighboring cores. This network allows weights and activations to stream efficiently across the chip and between the cores and the off-chip MemoryX unit, eliminating the need for intermediate storage.
+
+Computation within the WSE follows a dataflow paradigm, where operations are triggered by the arrival of data rather than instruction sequencing. This design enables fine-grained sparsity handling by filtering out computations involving zero values, significantly improving energy efficiency. In addition, the WSE features dynamic scheduling and Simultaneous Multi-Threading (SMT), with up to eight micro-threads per core corresponding to concurrent tensor operations. Each core monitors input and output readiness, selecting micro-threads for execution based on data availability and priority, thereby improving utilization and latency.
+
+\subsection{Graphcore IPU}
+
+The Intelligent Processing Unit (IPU) is a dataflow architecture built for AI introduced by GraphCore.
+To this day, two generations exist: the GraphCore Colossus MK1 (2017), which features GC2 IPUs, and the Colossus MK2 (2020), which features GC200 IPUs.
+
+The IPU is designed to deliver true MIMD parallelism while maintaining a high thread count. It implements a dataflow architecture that natively supports the \textbf{Bulk Synchronous Parallel (BSP)} model \cite{Jia2019}, which divides parallel execution into three substeps: local computation on private memory, communication among processes, and barrier synchronization ensuring all processes complete before the next iteration.
+
+Local computations are executed by tiles, each containing a processor and local memory. Processors operate independently, enabling MIMD execution, and support up to six simultaneous threads through Simultaneous Multi-Threading (SMT). The first-generation IPU integrates 1,216 cores (7,296 threads), while the second generation expands to 1,472 cores (8,832 threads). Each tile includes an Accumulating Matrix Product (AMP) unit optimized for matrix multiplications and convolutions, capable of performing 16~FP32 or 64~FP16 operations per clock cycle.
+
+Consistent with the BSP model, tiles access only their local memory, eliminating the need for caches or shared DRAM. Each tile includes dedicated scratchpad SRAM—256~KB in the GC2 and 624~KB in the GC200—enabling high-bandwidth, deterministic performance. The IPU Interconnect Architecture supports the communication phase, providing all-to-all data exchange through on-chip IPU Exchange and off-chip IPU Links, which allow multiple IPUs to operate in parallel.
+
+Programming the IPU is done via the \textbf{Poplar SDK}, where applications are expressed as computation graphs: vertices represent operations, edges represent data movement, and tensors carry the data. The Poplar compiler translates this graph into threads according to the BSP model, automatically managing computation, communication, and synchronization phases.
+
+\begin{table}[h!]
+\centering
+\footnotesize
+\caption{Datacenter-level dataflow AI accelerators from SambaNova, Cerebras, and Graphcore.}
+\scriptsize
+\begin{tabularx}{\textwidth}{|l|l|l|c|l|l|l|l|}
+\cline{1-8}
+\textbf{Vendor} & \textbf{Name} & \textbf{Year} & \textbf{Cores} & \makecell[l]{\textbf{Data} \\ \textbf{Type}} & \multicolumn{2}{c|}{\textbf{Memory}} & \textbf{TDP} \\
+\cline{6-7}
+ & & & & & \textbf{on-chip} & \textbf{off-chip} & \\
+ \cline{1-8}
+ \multirow{2}{*}{\textbf{GraphCore}} 
+ & \textbf{GC2}          & 2017 & 1,216  & \makecell[l]{FP32\\FP16} & 300 MB & - &  \\
+\cline{2-8}
+ & \textbf{GC200}        & 2020 & 1,472  & \makecell[l]{FP32\\FP16} & 900 MB & - &  \\
+\cline{1-8}
+\multirow{3}{*}{\textbf{SambaNova}}
+ & \textbf{SN10}      & 2021 & \ 640 PCU/PMU & \makecell[l]{BF16\\\ } &   300 MB   & DRAM: 1.5 TB &  \\
+\cline{2-8}
+ & \textbf{SN30}      & 2022 & 1,284 PCU/PMU & \makecell[l]{BF16\\\ } & 640 MB   & DRAM: 1TB &  \\
+\cline{2-8}
+ & \textbf{SN40L}    & 2023 &  1,040 PCU/PMU & BF16 & 520 MB   & \makecell[l]{HBM: 64 GB\\DRAM: 768 GB} &  \\
+\cline{1-8}
+\multirow{2}{*}{\textbf{Cerebras}}
+ & \textbf{CS2 (WSE2)}   & 2021 & 850K  & \makecell[l]{FP16\\BF16} & 41 GB& MemoryX &  \\
+\cline{2-8}
+ & \textbf{CS3 (WSE3)}   & 2024 & 900K  & \makecell[l]{FP16\\BF16} & 44 GB & MemoryX &  \\
+\cline{1-8}
+\end{tabularx}
+\label{tab:dflow}
+\end{table}
+
+\newpage

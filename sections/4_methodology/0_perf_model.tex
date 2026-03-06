@@ -1,0 +1,154 @@
+\section{LLM Inference Performance}
+\label{chap:methods:sec:model}
+
+In Section \ref{chap:background:sec:llms}, we introduced the typical decoder-only transformer architecture, which consists of a stack of layers that includes a self-attention block and a feed-forward network. While Section \ref{chap:background:sec:serving} discusses how these models are used for generating text outputs. In this section, we provide a detailed description of LLM inference, discussing how the four factors identified earlier affect the computational and memory workload.
+This analysis enables us to critically analyze the results presented in Chapter \ref{chap:results}, understanding the distance between ideal and practical performance trends.
+
+As discussed in Section \ref{chap:background:sec:serving}, an inference task requires processing the entire prompt during the prefill phase. Then, in the decode phase, a new token is generated per forward pass.
+This meas that the total latency of the inference job can be identified as $\Delta t = \Delta t_{FP} \times(FP_{IN} + FP_{OUT})$, where $\Delta t_{FP}$ is the latency of the forward pass, $FP_{IN}$ is the number of forward passes needed for the prefill phase (typically 1), and $FP_{OUT}$ corresponds to the number of output tokens.
+
+$\Delta t_{FP}$ depends on the specific software implementation and hardware accelerator that are being employed. But, in general, we can decompose it in two parts: $\Delta t_{FP} = \Delta t_{C} + \Delta t_{mem}$, where $\Delta t_{C}$ is related to the computation, and $\Delta t_{mem}$ is related to memory accesses.
+With an accelerator with a throughput of $TP\  \text{OPs}/s$ and has a memory bandwidth of $BW\ \text{bytes}/s$, $\Delta t_{C} = C_{\text{forward}}/TP$ and $\Delta t_{C} = Mem/BW$, where $C_{\text{forward}}$ and $Mem$ are the number of operations and the amount of memory to access at each forward pass. 
+
+By applying the formula proposed by Kaplan et al.~\cite{kaplan2020scaling}, we can estimate the forward-pass computational cost \( C_{\text{forward}} \) in terms of the language model architecture and the context length. Specifically, we characterize a model by its total parameter count \( N \), the number of layers \( n_\text{layer} \), the dimensionality of the attention layer output \( n_\text{model} \), and the number of attention head groups $ n_\text{groups}$.
+
+For a model with size \( N \), the computational cost per forward pass can be approximated as
+\[
+C_{\text{forward}} \approx 2N + 2n_\text{layer} n_{\text{ctx}} d_{\text{attn}}.
+\]
+
+The first term refers to the context-independent FLOPs, which are related to the matrix-matrix multiplications associated with the $W^Q$, $W^K$, and $W^V$ projection matrices, as well as the feed-forward block. The second term, however, is context-dependent, as it scales linearly with the context length.
+Kaplan et al.~\cite{kaplan2020scaling} argue that the context-independent component of the computation dominates the overall cost, enabling a simplification of the forward-pass complexity to $C_{\text{forward}} \approx 2N$, where the number of FLOPs scales linearly with the model size $N$.
+
+To evaluate the validity of this hypothesis, we explicitly compute the FLOPs associated with both the context-dependent and context-independent components across five open-source models of varying sizes, selected from those used in our experimental evaluation. Table~\ref{tab:context_architecture} illustrates the relative contribution of these two components for different context lengths and increasing model scales. We observe that smaller models exhibit a larger relative impact from context-dependent operations. Nevertheless, for moderate context lengths (fewer than $10{,}000$ tokens), more than $85\%$ of the total computational cost consistently arises from the context-independent component across all models. This empirical evidence supports the robustness of the linear scaling trend for inputs of this size.
+
+\begin{table}[h]
+\centering
+\caption{Percentage of context-independent FLOPs over total for different context lengths.}
+\label{tab:context_architecture}
+\begin{tabular}{lccccccc}
+\toprule
+\textbf{Model} & \textbf{Params} & \textbf{Layers} & \textbf{Hidden} &
+\textbf{100} & \textbf{1,000} & \textbf{10,000} & \textbf{100,000} \\
+\midrule
+\textbf{Llama 3.1 8B}  & 8B      & 32 & 4096 & 99.8\% & 98.4\% & 85.9\% & 37.9\% \\
+\textbf{Qwen3 14B}     & 14.8B   & 40 & 6144 & 99.9\% & 98.8\% & 89.5\% & 46.1\% \\
+\textbf{Qwen3 32B}     & 32B     & 64 & 8192 & 99.9\% & 99.2\% & 92.4\% & 55.0\% \\
+\textbf{Nemotron 49B}  & 49B     & 80 & 8192 & 99.9\% & 99.3\% & 93.7\% & 59.9\% \\
+\textbf{Llama 3.3 70B} & 70B     & 80 & 8192 &100.0\% & 99.5\% & 95.5\% & 68.1\% \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Introducing parallelism across multiple sequences complicates the analysis: with a batch size $b$, each sequence requires $C_{\text{forward}}$ operations. If we neglect the context-dependent portion of the computation that differs across sequences, the total compute latency scales linearly with batch size,
+\[
+\Delta t_{C}(b) = b \times \Delta t_{C}(1),
+\]
+implying that the number of FLOPs per token remains constant for different values of $b$.
+Memory accesses, instead, display a different behavior. The amount of memory (\( \text{Mem} \)) that is read at each forward pass consists of two parts: a context-independent component (the model’s weights) and a context-dependent component (the KV cache).  
+For a sequence of length $n_{\text{ctx}}$ and a batch size $b$ the total amount of memory to read is
+\[
+Mem = NP_W + 2bn_\text{layer} n_{\text{ctx}} \frac{ d_{\text{model}} }{n_{\text{groups}}} P_A
+\]
+where $P_W$ is the number of bytes per weight, and $P_A$ is the number of bytes per value in the KV cache.
+It is essential to note that, unlike computation, the amount of memory allocated per token is not constant with respect to the batch size, as access to the model weights is shared among all the sequences in the batch.
+
+Using 1024 tokens as an example, we observe that for small batch sizes the contribution of the KV cache to the total memory footprint is negligible ($0.1\%$–$0.2\%$ across model sizes for $b=1$). However, as the batch size increases, the KV cache occupies a growing fraction of memory, particularly for smaller models, reaching $7.1\%$–$21.2\%$ at a batch size of $128$.
+
+Once the number of operations and the memory footprint are identified, we have all the elements to compute the latency $\Delta t_{FP}$ under an idealized model:
+\[
+\Delta t_{FP} = \Delta t_{C} + \Delta t_{mem} = \frac{(2N + 2n_\text{layer} n_{\text{ctx}} d_{\text{attn}})b}{TP} + \frac{NP_W + 2bn_\text{layer} n_{\text{ctx}} \frac{ d_{\text{model}}}{n_{\text{groups}}} P_A}{BW} \approx \frac{2N}{TP} + \frac{NP_W}{BW}
+\]
+Where the approximation holds for $N >> b n_{\text{ctx}} d_{\text{model}}n_\text{layer}$.
+
+This simplified model allows us to highlight some trends in the theoretical performance of LLM inference.
+
+First of all, we can relate the latency to the size of the model. We can expect \textbf{latency to scale linearly with the model size $N$}, as both computation and memory access-related latencies are dominated by that factor.
+
+Second, we can predict the \textbf{impact of quantization} on performance. In fact, weight quantization affects $P_W$, reducing $\Delta t_{Mem}$, while activation quantization affects both $P_A$ and $TP$, reducing both $\Delta t_{Mem}$ and $\Delta t_{C}$.
+
+Third, we can study the \textbf{impact of batch size on operational intensity $OI$}. Expressed in FLOPs/byte, it measures the ratio between operations and memory accesses. Using our model, it can be defined as:
+\[
+OI=\frac{(2N + 2n_\text{layer} n_{\text{ctx}} d_{\text{attn}})b}{NP_W + 2bn_\text{layer} n_{\text{ctx}} \frac{ d_{\text{model}}}{n_{\text{groups}}} P_A} \approx \frac{2N}{NP_W}b = \frac{2}{P_W}b
+\]
+We notice that, in the approximated performance model, \textbf{operational intensity scales linearly with batch size}, and it is independent of model size.
+\begin{comment}
+\ref{fig:roofline} shows how our experimental data on Llama 3.1 8B compares with two different versions of the performance model. In orange, we have the ideal performance model, which uses the theoretical peak $TP$ and $BW$, as provided by the vendor. The scaled model (in blue) estimates the actual $BW$ and $TP$ by choosing the values that best approximate the experimental data points.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth]{figs/roofline.pdf}
+        \caption{Roofline model of Llama 3.1 8B on NVIDIA GPUs.}
+    \label{fig:roofline}
+\end{figure}
+
+We notice that, for small ($\le16$) batch sizes, the scaled performance model accurately predicts performance, while it overestimates performance for large batch sizes. This is due to the dynamicity of vLLM batch size, which is downscaled automatically to prevent out-of-memory errors when batching long sequences.
+\end{comment}
+
+Finally, we can use this model to understand a well-known \textbf{limitation of LLM inference: its memory-bound nature}. In fact, especially for small batch sizes (low $OI$), the impact of throughput on performance is negligible compared to that of memory bandwidth. As discussed in Chapter \ref{chap:hardware}, the throughput of modern GPUs is in the hundreds or thousands of TFLOPs ($10^{14}-10^{15}$ FLOPs), while memory bandwidth is in the TBytes/s ($10^{12}$).
+This means that the operational intensity necessary to achieve peak performance is between $ 10^2$ and $10^3$ FLOPS/byte, highly favoring large batch sizes.
+
+\subsection{Mixture of Experts}
+\label{chap:model:sec:moe}
+
+In the previous section, we analyzed the performance of dense decoder-only LLMs. To model the performance of Mixture-of-Experts (MoE) models, we have to consider their sparsity.
+We indicate the number of active parameters of Mixture of Experts Models with $A$, and we define sparsity as $S=A/N$.
+
+A batch size of one indicates the trivial case. We can simply substitute $N$ for $A$, obtaining a theoretical performance improvement of $Speedup_1 = 1/S$.
+
+\[
+\Delta t_{FP} = \Delta t_{C} + \Delta t_{mem} = \frac{(2A + 2n_\text{layer} n_{\text{ctx}} d_{\text{attn}})b}{TP} + \frac{AP_W + 2bn_\text{layer} n_{\text{ctx}} \frac{ d_{\text{model}}}{n_{\text{groups}}} P_A}{BW} \approx \frac{2A}{TP} + \frac{AP_W}{BW}
+\]
+
+Increasing batch size complicates the problem, as each sequence uses a different set of experts.
+A model with $E_{tot}$ experts, of which $E_{act}$ are active, $b$ will activate $E_{act}$ experts for each sequence in the batch. Notably, the sets of active experts overlap, so the experts that are active across the batch are between $E_{act}$ and $\min(bE_{act},E_{tot})$.
+In this case, each sequence requires approximately $2A$ FLOPS/token ($1/S \times$ speedup), while the amount of memory ($\text{Mem}$) read at each forward pass depends on the total number of active experts. 
+
+\subsection{Multi-Device}
+\label{chap:model:sec:multi}
+
+In Section \ref{chap:background:sec:serving}, we introduced four techniques to parallelize multi-GPU inference: Pipeline Parallelism (PP), Tensor Parallelism (TP), Expert Parallelism (EP), and Data Parallelism (DP).
+In this section, we describe how our performance model can be adapted for multi-device inference. To do so, we build on the contribution of Subramanian et al. \cite{subramanian2024comprehensive}.
+
+To compute the speedup that is possible to achieve with parallelization, we use the formula:
+
+\[
+ S = \frac{ITL \cdot S^* +OH}{ITL}
+\]
+
+Where $OH$ is the overhead caused by GPU-to-GPU communication. The lower bound of the overhead is constituted by the amount of memory that needs to be moved $Vol$ divided by the bandwidth of the GPU-to-GPU network $BW_{Net}$:  $OH = Vol/BW_{Net}$. 
+
+Each parallelization technique leads to different values of $TP$, $BW$, $Vol$, and contributes to increasing memory capacity in a different way.
+
+\begin{comment}
+    \ref{tab:parall} summarizes those contributions.
+
+\begin{table}[H]
+\centering
+\footnotesize
+\caption{Speedup across parallelization techniques.}
+\begin{tabularx}{\textwidth}{@{}c c c c c@{}}
+\toprule
+\textbf{Technique} & \textbf{Throughput ($TP$)} & \textbf{Bandwidth ($BW$)} &
+\textbf{Volume ($Vol$)} & \textbf{Mem. Size} \\
+\midrule
+\textbf{Data Parallel}     & $\times D$                             & $\times D$                           & $0$                                         & $\times 1$ \\
+\textbf{Pipeline Parallel} & $\times 1$                             & $\times 1$                           & $b\, d_{\text{model}} D$                      & $\times D$ \\
+\textbf{Tensor Parallel}  & $\times D$                             & $\times D$                           & $4b\, n_{\text{layers}}\,d_{\text{model}}\,P_A\,D$ & $\times D$ \\
+\bottomrule
+\end{tabularx}
+\label{tab:parall}
+\end{table}
+\end{comment}
+
+\begin{itemize}
+    \item \textbf{Data Parallelism}: Data Parallelism simply replicates the single-device setting $D$ times, increasing throughput and memory bandwidth linearly ($TP_D=D\cdot TP, BW_D=D\cdot BW$). There is no GPU-to-GPU communication, so $OH=0$ and the expected speedup is linear $S_D = D$. The only limitations of this technique are that it does not increase the overall memory size available for the weights, and it offers limited speedup when $b < D$, as some devices remain inactive.
+
+    \item \textbf{Tensor parallelism (TP)}: This technique shards the model's weights across devices layer by layer, increasing the memory size by a factor of $D$. As all devices work in parallel, we can also assume that $TP$ and $BW$ increase by a factor of $D$. The volume of data to be moved at every forward pass is $4b n_{\text{layers}}d_{\text{model}} P_A$  \cite{subramanian2024comprehensive}, introducing an overhead $OH$ that depends on the GPU-to-GPU bandwidth $BW_{C2C}$.
+
+    \item \textbf{Expert Parallelism (EP)}: Expert Parallelism works similarly to Tensor Parallelism and thus results in a similar behavior. The key differences are that attention layers are not replicated, and thus the memory scaling is less than $D$, and the load imbalance that is caused by the unpredictable nature of expert activations.
+
+    \item \textbf{Pipeline parallelism} is often used to host large models over multiple nodes. It does not increase compute nor bandwidth, but it requires moving substantially less memory than Tensor Parallelism ($b d_{\text{model}}D << 4b n_{\text{layers}}d_{\text{model}} P_A$).
+\end{itemize}
+
+In conclusion, we can expect Data Parallelism to perform best, as it has null overhead. However, when memory size becomes a limiting factor, Pipeline, Tensor, and Expert Parallelism become the preferred solutions.

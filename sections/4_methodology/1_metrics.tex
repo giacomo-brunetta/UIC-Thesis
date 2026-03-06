@@ -1,0 +1,11 @@
+\subsection{Performance Metrics}
+\label{chap:methods:sec:metrics}
+To provide a comprehensive evaluation of LLM inference, we consider both performance and energy efficiency using well-established metrics:
+\begin{itemize}
+    \item \textbf{End-to-End (E2E) Latency}: The total time required to generate an output sequence. Latency is a primary quality-of-service (QoS) metric, as it reflects the waiting time experienced by end users. Using our performance model, it represents the sum of all the latencies of the forward passes necessary to generate a sequence ($\sum_{i=0}^{T+1} \Delta t_{FP}(i)$).
+    \item \textbf{Time To First Token (TTFT)}: The time  taken to produce the first output token. It a the latency of a forward pass which involves a prefill task.
+    \item \textbf{Inter Token Latency (ITL)}: Average interval between the generation of two consecutive tokens. It is obtained as $(\text{E2E}-\text{TTFT})/\text{Tokens}_{out}$. It represents the average latency of a forward pass.
+    \item \textbf{Throughput}: The number of tokens processed per second. It is obtained as $\text{Tokens}/\text{E2E}$. This is a key metric in a batch-inference scenario, where the goal is to process multiple requests as quickly as possible.
+    Considering only output tokens, it can be expressed as $b/\Delta t_{FP}$, assuming a constant batch size $b$. Following prior work \cite{LLMInfbench}, in the experimental evaluation, we consider both input and output tokens.
+    \item \textbf{Energy Efficiency}: The number of tokens generated per joule of energy consumed $\text{Tokens}/\text{Energy}$. Energy consumption is measured as the integral of power over time, so it can be reduced by either lowering power consumption or reducing latency. Consistent with throughput, we include both input and output tokens in this metric.
+\end{itemize}

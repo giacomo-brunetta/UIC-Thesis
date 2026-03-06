@@ -1,0 +1,14 @@
+
+In this thesis, we make the following contributions:
+
+\begin{itemize}
+    \item We present, in Chapter~\ref{chap:hardware}, a detailed survey of contemporary LLM inference accelerators and analyze the architectural challenges that shape modern hardware design for large-scale inference.
+
+    \item We develop a performance benchmark that systematically evaluates the main determinants of LLM inference performance, including model size and sparsity, batch size, quantization strategies, and multi-GPU execution techniques.
+
+    \item We conduct a comprehensive evaluation of a diverse set of accelerators, including six GPUs and two dataflow systems. For all platforms, we measure both performance and energy efficiency, addressing an important gap in prior work, which has predominantly focused on performance alone.
+
+    \item We provide a principled analysis of dataflow accelerator behavior in LLM inference, clarifying how batch size influences throughput, latency, and energy efficiency, and dispelling common misconceptions regarding their performance characteristics.
+\end{itemize}
+
+Our evaluation yields several important conclusions regarding the joint performance–energy efficiency trade-offs across accelerator families. Dataflow accelerators deliver substantially higher efficiency—often an order of magnitude better than GPUs—at the small batch sizes ($\le 8$) that dominate online, latency-sensitive inference. GPUs, however, excel in high-throughput offline inference due to their larger HBM capacity, mature software ecosystems, and support for FP8 execution, which collectively enable aggressive optimizations that compensate for their lower low-batch efficiency. Taken together, these results highlight the complementary strengths of GPUs and dataflow accelerators, clarifying which architectures are best suited for different LLM deployment scenarios.

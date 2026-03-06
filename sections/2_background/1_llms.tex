@@ -1,0 +1,23 @@
+\section{Large Language Models}
+\label{chap:background:sec:llms}
+
+Large Language Models (LLMs) are generative transformer models trained to perform natural language processing tasks.
+State-of-the-art LLMs typically employ a decoder-only transformer architecture \cite{radford2018improving}, consisting of a stack of layers, each containing an attention block \cite{attention_is_all_you_need} and a feed-forward network, both of which are surrounded by normalization layers.
+Although this structure is broadly shared, different LLMs have substantial differences in their architecture.
+The first key distinctive aspect is the attention mechanism. The original \textit{Attention is all you need} paper \cite{attention_is_all_you_need} proposed Multi-Head Attention (MHA), which comprises multiple attention heads, each performing a three-fold projection of the input into the query $Q$, key $K$, and value $V$ latent spaces. 
+This mechanism can be formalized as: 
+
+\[
+\text{MultiHead}(Q, K, V) = \text{Concat}\big(\text{head}_1, \ldots, \text{head}_h\big)
+\]
+\[
+\text{where} \quad \text{head}_i = \text{Attention}\big(Q W_i^Q,\, K W_i^K,\, V W_i^V\big)
+\]
+\[
+\text{and} \quad \text{Attention}(Q, K, V) = \text{softmax}\!\left(\frac{Q K^\top}{\sqrt{d_k}}\right) V.
+\]
+More recent models employ Grouped Query Attention (GQA) \cite{ainslie2023gqa}, which divides the attention heads into groups that share $K$ and $V$ projections, while performing a distinct query $Q$ projection for each group. This allows for reducing the amount of computation and the memory footprint of inference, as $K$ and $V$ projections of previous tokens are typically cached, a technique known as KV caching. Notably, DeepSeek V3 and R1 \cite{liu2024deepseek, guo2025deepseek} use a different mechanism called Multi-head Latent Attention (MLA), which compresses the KV cache for further memory reduction.
+
+The second aspect in which large language models differ is the sparsity of the feed-forward block. Dense models utilize monolithic feed-forward networks, whereas Mixture-of-Experts (MoE) \cite{artetxe2021efficient} models comprise a set of smaller blocks, known as experts, that are selectively activated by a router network. MoE models achieve competitive accuracy compared to similarly large dense models, while necessitating a fraction of the compute.
+
+Finally, models vary widely in terms of size, ranging from hundreds of millions to trillions of parameters. The factors that contribute to the number of parameters $N$ are the number of layers $n_\text{layer}$, attention heads $n_\text{heads}$, and their output size $d_{\text{attn}}$, and the dimension of the feed-forward block $d_{\text{ff}}$.

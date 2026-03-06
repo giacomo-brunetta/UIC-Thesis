@@ -1,0 +1,117 @@
+\subsection{AI Accelerators - TPUs}\label{chap:background:sec:tpu}
+
+This section describes the design \textbf{Tensor Processing Units (TPU)} and other architectures that share common features. \ref{tab:tpus} summarises the main features of the architectures discussed in this section, namely Google TPUs, Habana Lab TPCs, and Groq LPus.
+
+\begin{table}[h!]
+\centering
+\footnotesize
+\caption{Tensor-Core based accelerators from Google, Habana Labs, and Groq.}
+\scriptsize
+\begin{tabularx}{\textwidth}{|l|l|l|l|l|c|c|l|}
+\cline{1-8}
+\textbf{Vendor} & \textbf{Name} & \textbf{Year} & \textbf{Cores} & \textbf{Data Type} & \multicolumn{2}{c|}{\textbf{Memory}} & \textbf{TDP} \\
+\cline{6-7} & & & & & \textbf{on-chip} & \textbf{off-chip} & \\
+\cline{1-8}
+\multirow{8}{*}{\textbf{Google}} 
+&\textbf{TPU v1} & 2015 & \makecell[l]{1 core\\ 1 MXU/core} & \makecell[l]{int8 \\ \ } & 28 MB & DDR3: 8 GB& 75 W\\
+\cline{2-8}
+&\textbf{TPU v2} & 2017 & \makecell[l]{2 cores\\ 1 MXU/core} & \makecell[l]{BF16 \\ \ }& 32 MB & HBM: 16 GB& 280 W\\
+\cline{2-8}
+&\textbf{TPU v3} & 2018 & \makecell[l]{2 cores\\ 2 MXU/core} & \makecell[l]{BF16 \\ \ } & 32 MB & HBM: 32 GB& 450 W\\
+\cline{2-8}
+&\textbf{TPU v4} & 2021 & \makecell[l]{2 cores\\ 4 MXU/core} & \makecell[l]{BF16, int8 \\ \ } & 32 MB & HBM: 32 GB& N/A\\
+\cline{2-8}
+&\textbf{TPU v4i}& 2021 & \makecell[l]{1 core\\ 4 MXU/core} & \makecell[l]{BF16, int8 \\ \ } & 144 MB & HBM: 32 GB& 175 W\\
+\cline{2-8}
+&\textbf{TPU v5e} & 2023 & \makecell[l]{1 core\\ 4 MXU/core} & \makecell[l]{BF16, int8 \\ \ } & 112 MB & HBM: 16 GB& N/A\\
+\cline{2-8}
+&\textbf{TPU v5p} & 2023 & \makecell[l]{2 cores\\ 4 MXU/core} & \makecell[l]{BF16, int8 \\ \ } & 48 MB & HBM: 95 GB& N/A\\
+\cline{2-8}
+&\textbf{TPU v6e} & 2024 & \makecell[l]{1 core\\ 4 MXU/core} & \makecell[l]{BF16, int8 \\ \ } & N/A & HBM: 32 GB& N/A\\
+\cline{2-8}
+&\textbf{TPU v7p} & 2025 & \makecell[l]{N/A} & \makecell[l]{BF16, FP8 \\ \ } & N/A & HBM: 192  GB& N/A\\
+\cline{1-8}
+
+\multirow{4}{*}{\textbf{Habana}}
+&\textbf{Goya} & 2018 & \makecell[l]{8 TPC\\ 1 MME} & \makecell[l]{int8 \\ \ } & 28 MB & DDR4: 16 GB& N/A\\
+\cline{2-8}
+&\textbf{Gaudi} & 2019 & \makecell[l]{8 TPC\\ 1 MME} & \makecell[l]{FP32, int8 \\ \ }& 24 MB & HBM2: 32 GB& N/A\\
+\cline{2-8}
+&\textbf{Gaudi 2} & 2022 & \makecell[l]{24 TPC\\ 2 MME} & \makecell[l]{FP32,BF16,\\FP16,FP8 } & 48 MB & HBM: 96 GB& 600 W \\
+\cline{2-8}
+&\textbf{Gaudi 3} & 2024 & \makecell[l]{64 TPC\\ 8 MME} & \makecell[l]{FP32, TF32, \\ FP16, BF16, FP8 } & 96 MB & HBM: 128 GB& 900 W\\
+\cline{1-8}
+
+\textbf{Groq} & \textbf{GroqCard} & 2019 & \makecell[l]{320 lanes} & \makecell[l]{int8, int16,\\ FP16 } & 230 MB & - & 275 W\\
+\cline{1-8}
+\end{tabularx}
+\label{tab:tpus}
+\end{table}
+
+
+\subsection{Google TPU}
+\label{chap:background:sec:tpu}
+
+In 2013, Google began developing the Tensor Processing Unit, the first domain-specific accelerator designed for neural network inference.
+At the time, the state of the art consisted of using general-purpose GPUs for model training and CPUs for inference. Google realised that this approach was not economically sustainable due to the high cost in terms of energy consumption, so they decided to use a completely different design compared to CPUs, with the goal of reducing energy consumption by a factor of ten. Rather than having a many-core, shared-memory, general-purpose accelerator, they opted for a single-core, domain-specific accelerator featuring a specialised functional unit for matrix multiplication (Matrix Multiplication Unit). This functional unit leverages spatial computation to minimise energy-intensive memory accesses and control operations\cite{jouppi2018motivation}, resulting in an extremely energy-efficient chip.
+The success of this approach proved the effectiveness of domain-specific architectures as machine learning accelerators, representing a turning point in the history of hardware accelerators.
+
+Currently, there are several generations of Tensor processing units (v1-v7). The most important features of those accelerators are summarised in table \ref{tab:tpus}, while the remainder of this section describes in detail the first four generations, of which Google disclosed the architecture.
+
+\textbf{TPU v1:} The first generation of Google's TPU\cite{Jouppi2017} is a PCIe-attached co-processor built to accelerate matrix-matrix multiplications and convolutions. The heart of the TPU is the \textbf{Matrix Multiply Unit (MXU)}: a 256-by-256 systolic array of int8 matrix multipliers. Each clock cycle, the MXU produces a 256-element partial sum, which is accumulated into dedicated accumulator registers. The TPU also features dedicated functional units for normalisation, pooling, and activations, which are directly attached to the accumulator registers.
+The TPU features a complex memory structure. The model's weights, which are read-only, are stored in the off-chip memory (8 GB of DDR3 DRAM). The unified Buffer, a 24 MB on-chip scratchpad memory (SRAM), holds data that requires reading and writing, such as the inputs and activations.
+The TPU uses a Very Long Instruction Word (VLIW) architecture, where each instruction encodes multiple operations. This allows the compiler to schedule instructions statically, simplifying hardware design while enabling high utilisation through parallel execution.
+
+\textbf{TPU v2 and v3:} The second generation of TPUs \cite{Norrie2021} is designed to tackle the more complex task of deep neural network (DNN) training. While this version is not intended for inference, its design addresses several shortcomings of the first-generation TPUs, making it highly relevant.
+The primary differences between TPU v1 and TPU v2 lie in the pipeline architecture and memory structure. The memory structure evolves significantly to meet training demands, which requires more memory than inference and where weights are no longer read-only. Activation, storage, and accumulator registers are merged into a single scratchpad memory (SRAM) called Vector Memory. Additionally, off-chip memory is no longer directly attached to the Matrix Multiply Unit (MXU). Inst ad connects to the Vector Memory.
+The off-chip memory capacity increases from 8 GB to 16 GB, and HBM is used instead of standard DDR memory, improving throughput by a factor of 20.
+The pipeline is restructured to align with the new chip organisation: instructions are fetched by the scalar unit, which handles scalar operations. Vector operations are issued to the vector unit, with the MXU functioning as a co-processor for the vector unit. Data vectors move from the vector unit to the MXU via a push operation. The  XU results are stored in a results FIFO queue, from which the vector unit retrieves them using a pop operation.
+Another significant change in TPU v2 is the adoption of new data types. Unlike 8-bit integer quantisation, which is effective for inference, training requires floating-point precision. This motivates the transition from 8-bit integers to bfloat16, a truncated version of the IEEE 754 32-bit floating-point format. This format minimises hardware complexity while maintaining acceptable numerical accuracy.
+Adopting bfloat16 significantly impacts the MXU design, which features 128×128 bfloat16 multipliers instead of 256×256 int8 multipliers. Similarly, the vector memory is restructured to store 128-element vectors of bfloat16 instead of 256-element vectors of int8. Although bfloat16 was uncommon at the time, its adoption in TPU v2 helps establish it as an industry standard for DNN domain-specific accelerators (DSAs), bolstered by the success of the second-generation TPU.
+In addition to the scalar unit, vector unit, and MXU, TPU v2 includes dedicated hardware units for matrix operations, such as transpositions, row reductions, and column permutations.
+TPU v2 also introduces a dual-core design. Each core features an on-chip router that manages interconnection between the two cores and supports a 2D torus interconnection between multiple TPUs through four off-chip links.
+The upgrade from the second and the third did not involve any radical redesign but simply an upgrade of some components. In particular, each core has two MXUs instead of one, clock speed is increased,  HBM memory is faster and doubled in size, and interconnectivity is improved to support larger networks.
+
+\textbf{TPU v4i:} Introduced in 2021, the fourth generation of TPUs \cite{Jouppi2021} offers two distinct types of cards: one for training and another for inference. The TPU v4, like its predecessors TPU v2 and TPU v3, is a multi-core chip designed specifically for training workloads. In contrast, the TPU v4i is a single-core card optimized for inference, similar to the original TPU v1.
+Despite the different purposes of TPU v4 and TPU v4i, many architectural decisions from the second and third generations are also present in the inference-focused chip of the fourth generation. One notable similarity is in the off-chip memory architecture. Unlike TPU v1, which relied on DDR3 memory, TPU v4i employs HBM (High Bandwidth Memory) technology to achieve significantly higher throughput. However, the structure of the on-chip memory has been further refined. Like previous generations, the TPU v4i features scratchpad memory (Vector Memory) to store vectors of data close to its vector and matrix units. Additionally, it introduces a new 128 MB SRAM known as Common Memory (CMEM), which acts as an intermediary layer between HBM and vector memory. Smaller dedicated memory units are also present to store scalar values and instructions.
+Another similarity is the range of supported data types. Unlike TPU v1, which supported only integers, support supports both int8 and bfloat16 formats. This change reflects the increased accuracy requirements from 2017 to 2021. Over time, the numerical approximations caused by int8 quantisation have been found to negatively impact model accuracy in certain domains. To address this, newer inference chips like TPU v4i support quantisation but do not require it. \cite{Jouppi2021}
+Finally, TPU v4i, like TPU v3, includes multiple MXUs (Matrix Multiply Units) per core. TPU  4i features four MXUs per core, doubling the number in the previous generation. As with the second and third-generation cards, MXUs act as co-processors for the vector unit.
+
+\textbf{TPU v5-v7:} After the launch of the TPU4 other two generations have been deployed on Google Cloud (TPU v5 and TPU v6), while a third (TPU v7) has been announced. The architectural details of those accelerators have not been disclosed, like for the previous generations, so most of the architectural details of those accelerators remain unknown.
+The fifth generation is composed of two accelerators: TPU v5p, which is performance-oriented, and TPU v5e, which is meant for cost-efficiency. Both those accelerators feature 4 MXUs/core and support bfloat16 and int8 data types, as their predecessor.
+The sixth generation introduces TPU v6e (Trillium), which offers twice the memory compared to TPU v5e and has 4 $256\times256$ MXUs per core, unlike the past 4 generations that featured $128\times128$ MXUs. TPU v7p (Ironwood) more than doubles the memory capacity compared to TPU v5p (192 GB vs 95 GB), and it is the first generation to support 8-bit floating-point precision, rather than 8-bit integers for quantised inference.
+
+\subsection{Habana Labs TPC}
+\begin{comment}
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth]{figs/HL TPC.png}
+    \caption{High-Level Diagram of Habana Goya.}
+    \tagpdfsetup{alttext={High-Level Diagram of Habana Goya.}}
+\end{figure}
+\end{comment}
+
+In 2018, Habana Labs ---now part of Intel--- introduced the Tensor Processing Cores (TPC), a family of AI accelerators targeted at neural network inference and training. Habana Labs' approach to domain-specific accelerators shares similarities with Google's, as both architectures are centered around a matrix-multiply unit designed as a systolic array of multiply-accumulate functional units. The  Its current lineup consists of two hardware accelerators for DNN inference: Habana Goya (2018), and Habana Greco (2022), and a family of hardware accelerators for training: Habana Gaudi (2019), Habana Gaudi2 (2022), and Habana Gaudi3 (2024).
+
+\textbf{Habana Goya: } Targeted for DNN inference, Goya \cite{Gwennap2019} is the first chip presented by Habana Labs.
+Habana Goya cards feature an HL-1000 processor, consisting of eight Tensor Processing Cores (TPCs), a Matrix Multiplication Engine (MME), and memory units. TPCs are VLIW processors that feature SIMD and AI-specific functional units. SIMD units process both integer (8, 16, and 32 bits) and floating-point (32 bits) values. The MME closely resembles the MXU of the first TPU as it is a 256 by 256 matrix multiply unit that processes 8-bit integer values. But, unlike Google's TPU, which has one or more MXUs per core, Goya has a single MME per chip and eight cores that use it as a co-processor. The memory structure of Goya is composed of an off-chip DRAM memory (16 GB DDR4), a local SRAM memory, and registers local to each TPC.
+
+\textbf{Habana Gaudi: }Released a few months later, the first version of Gaudi \cite{Gwennap2019}, the training printed chip of Habana Labs, deeply resembles Goya in its structure. To transform Goya into a training chip, Habana Labs performed three key upgrades. The first regards the GEMM engine, which, unlike that of Goya, supports floating-point operations.
+The second regards off-chip memory, which has been upgraded from 16 GB of DDR4 to 32 GB of HBM2 memory. The third one regards the capability of connecting multiple cards in parallel, thanks to 10 100 GB/ s network interfaces, which allow performing memory-to-memory transfer over Ethernet.
+
+\textbf{Gaudi2\cite{gaudi2}: } represents an upgrade to the architecture of Gaudi: the cluster of TPCs is tripled in size (24 cores), the DRAM memory is faster and three times larger (6 x 16 GB HBM2E memory), and the network connectivity now consists of 24 100 GB/s Ethernet ports instead of 10. Another major upgrade is in the support for mixed precision data types. In fact, while Gaudi only supported 32-bit floating points, Gaudi 2 also supports bfloat16, FP16, and FP8 data types both in its TPCs and in the GEMM engine. Finally, Gaudi2 features dedicated decoding engines that are responsible for decoding compressed image and video data.
+
+\textbf{Gaudi3\cite{Kaplan2024}: } represents an ulterior upgrade compared to Gaudi2. Similar to what Google did with the second generation of TPUs, Habana Labs decided to scale out its architectures by having four homogeneous clusters, each composed of 16 TPCs and two Matrix Multiply Engines for a total of 96 TPCs and 8 GEMMs. The memory is also upgraded, changing the type of the shared memory from SRAM to 48 MB of SRAM to 96 MB of L2 cache and increasing the size of DRAM memory from 6 x 16 to 8 x 16 blocks of HBM2E memory.
+
+\subsection{Groq LPU}
+
+The Groq Language Processing Unit (LPU) \cite{Gwennap, Abts2022} is a dataflow accelerator introduced in 2019 by Groq.
+The LPU is built as a systolic array of heterogeneous functional units where data flows horizontally through lanes and instructions vertically across them. Sixteen lanes form a superlane, and the LPU contains 20 active superlanes plus one redundant lane. Each superlane processes streaming data through a Vector Unit, Memory Unit, Switch Unit, and Matrix Unit arranged symmetrically into eastward and westward hemispheres. The Vector Unit has 16 ALUs supporting integer–floating-point conversions and activation functions. The Memory Unit provides 44 slices of 128 kB SRAM (5.5 MB total) with up to two reads and writes per cycle for instructions and activations. The Switch Unit handles tensor reshaping, while the Matrix Unit includes 320 MACs per lane optimised for int8 but also supporting int16 and FP16. So, in total, each superlane features 20 $16\times 16$ matrix-matrix multiplication units.
+
+Groq LPU design resembles Google's TPU as it includes vector and matrix-matrix multiplication functional units optimised for integer operations. On the other hand, the way instructions are pipelined through the lanes is drastically different from Google's design. Another key difference is the absence of DRAM memory and caches, which allows the LPU to achieve full determinism, allowing its compiler to statically schedule every operation with cycle-accurate predictability.
+
+
+
+%\subsection{Amazon EC2 AI Chips}
+%TBD (?)
+

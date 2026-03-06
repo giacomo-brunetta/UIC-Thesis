@@ -1,0 +1,876 @@
+\documentclass[conference]{IEEEtran}
+
+% Language setting
+\usepackage[english]{babel}
+\usepackage{booktabs}
+\usepackage{graphicx}   % For including graphics
+\usepackage{subcaption} % For subfigures
+\usepackage{comment}
+\usepackage{xcolor}
+
+\usepackage[a4paper,top=1.75cm,bottom=1.75cm,left=1.75cm,right=1.75cm,marginparwidth=1.75cm]{geometry}
+
+% Useful packages
+\usepackage{amsmath}
+\usepackage{graphicx}
+\usepackage[colorlinks=true, allcolors=blue]{hyperref}
+\usepackage{caption}
+
+\title{LLM Energy Benchmark}
+\author{Giacomo Brunetta}
+
+\begin{document}
+\maketitle
+\section{Abstract}
+
+Abstract goes here
+
+\section{Introduction}
+In recent years, Large Language Models (LLMs) have revolutionized the field of NLP and AI, providing state-of-the-art performance in many tasks, from translation to question answering and text summarization. The unprecedented hardware requirements of those models created the need for a variety of accelerators to allow for the training of those models and their inference.
+The goal of this paper is to provide an extensive evaluation of the performance and energy consumption of different hardware accelerators in the task of LLM inference.
+AI accelerators span the whole computing continuum spectrum from ultra-low power and embedded systems to high-performance data center systems\cite{Reuther2020}. This paper focuses on data center hardware, excluding embedded, edge, and ultra-low power solutions.
+
+\section{AI Inference Hardware}
+Following a historical perspective, this section presents the landscape of data center hardware accelerators used for AI inference. It starts with the challenges that drove the evolution of AI hardware (Section \ref{trends}) and then provides detailed descriptions of the most relevant data center AI accelerators currently available to the market (Sections \ref{gpu}, \ref{tpu} and \ref{dataflow}), including the ones used in the experiments. 
+
+The architectures are grouped into sections according to their design philosophy. In particular, I identified three main approaches:
+
+\begin{itemize}
+    \item \textbf{Graphics Processing Units} (Section \ref{gpu}), which are massively parallel accelerators capable of executing numerous concurrent threads according to the \textbf{Single Instruction Multiple Threads} (SIMT) paradigm (further discussed in \ref{SIMT}). As \textbf{shared-memory architectures}, GPUs feature a multi-level memory hierarchy comprising global memory (a large DRAM accessible to all threads) and shared memory (accessible to threads within the same block).
+    \item \textbf{Tensor Processing Units} (Section \ref{tpu}). Developed by Google, TPUs are the first example of Domain Specific Architectures for DNNs. Rather than achieving parallelism through a large number of cores, TPUs feature fewer (usually 1 to 8) VLIW cores that operate on vectors and matrices of data. In particular, TPUs feature a \textbf{matrix multiplication functional unit} that exploits spatial computation to reduce memory accesses, improving throughput and energy efficiency. TPUs feature a complex memory hierarchy comprising a global DRAM memory and local scratchpad memories.
+    \item \textbf{Dataflow architectures} (Section \ref{dataflow}), which \textbf{combine spatial computing with a many-core design} to efficiently handle parallel computations. In dataflow architectures, each core is connected to the others through an \textbf{on-chip network} and is responsible for a step of the computation. It receives data from the network, stores it in its local memory, processes it, and then transmits it again. This processing model \textbf{eliminates the need for global memory}, whose throughput usually constitutes a major bottleneck in shared memory architectures.
+\end{itemize}
+
+Other approaches to AI hardware acceleration include reconfigurable architectures (\textbf{FPGAs}), \textbf{in-memory} computation, and \textbf{neuromorphic} architectures \cite{Kachris2025, Mohaidat2024, Hu2022}. While these methods hold significant potential, they fall outside the scope of this thesis.  
+
+It is important to point out that TPUs and dataflow architectures both belong to the category of \textbf{Domain Specific Architectures}. For this reason, surveys typically group them together. Focusing mainly on Domain-Specific architectures, I decided to adopt a more fine-grained distinction that allows me to distinguish between architectures that use spatial computation in a fixed-function functional unit from architectures that feature many cores interconnected by a configurable on-chip network.
+
+ 
+\subsection{Hardware Trends} \label{trends}
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=0.4\textwidth]{figs/Moores.png}
+    \caption{Moore's Law}
+\end{figure}
+
+\paragraph{Moore and Dennard}
+In 1969, Gordon Moore made a prediction—now known as \textbf{Moore's Law}—stating that the number of transistors in integrated circuits would double approximately every two years. A few years later, in 1974, Robert H. Dennard introduced \textbf{Dennard Scaling}, which asserted that as transistors are scaled down, their power density remains constant. Together, these two principles implied that for a fixed chip area, it was possible to increase the transistor count—and consequently improve performance—every two years, all without increasing power consumption.
+Those predictions held for almost 20 years (from 1986 to 2003), determining the success of the single-core general-purpose CPUs. In an era when transistor size alone provides a performance increase of 52\% per year, the benefits of switching to domain-specific architectures would have been quickly overshadowed by the benefits of newer general-purpose hardware\cite{Hooker2021}.
+
+\paragraph{Slowing Down} In 2003, the improvement of general-purpose hardware started to slow down significantly, moving from 52\% per year to 23\% per year. This slowdown was caused by the \textbf{end of Dennard Scaling}. Since power density was no longer constant, it became necessary to trade off performance with power consumption.
+In 2011, the scaling of transistors also started to slow down compared to the past, determining the \textbf{end of Moore's law}. Even adopting multi-core solutions, from 2011 to 2015, the annual performance improvement of CPUs was only around 11\%. This was motivated by the limits of parallelism imposed by \textbf{Amdhal's law}. From 2015 to 2018, the improvement was even worse, only 3.5\% a year.
+
+\paragraph{The Hardware Lottery} 
+In an era of diminishing improvements in general-purpose hardware, the only way to deliver substantial growth in performance is to build machines optimized for a specific domain. 
+
+In a scenario in which hardware is optimized for specific types of workloads, the success of an algorithm is greatly impacted by the underlying hardware. This co-dependence requires great cooperation between algorithm designers and hardware engineers.
+To describe a scenario in which this cooperation does not happen,
+Sara Hooker introduced the concept of hardware lottery \cite{Hooker2021}. In a hardware lottery scenario, the match of algorithm requirements and hardware features happens purely by chance, possibly missing out on powerful algorithms.
+The most relevant example of hardware lottery is constituted by Neural Networks. In fact, the algorithms needed to train Neural Networks were developed between the 50s and the 80s, but it was only in the 2010s that hardware allowed for training sufficiently large Neural Networks to impose them as the state-of-the-art solution to complex problems like computer vision and natural language processing.
+As further discussed in Section \ref{gpu}, where General Purpose GPUs are to unlock the potential of Neural Networks, offering unprecedented parallel-computation capabilities that fit the needs of large Neural Network training. In particular, the parallel capabilities of GPUs were crucial to accelerate matrix-matrix multiplications, which constitute most of the computing workload of both neural network inference and training.
+
+Once the importance of Neural Networks was understood, hardware engineers started to develop accelerators built to accelerate Neural Network inference and training. The first company to make a move in this direction was Google, which started to develop its Tensor Processing Unit (Section \ref{tpu}) in 2013.
+Their success proved that Neural Networks could greatly benefit from Domain-Specific Architectures, leading the way for a revolution in ML-hardware design\cite{Dean2018}.
+
+\begin{figure}[h!]
+    \centering
+    \begin{subfigure}[b]{0.45\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{figs/Memory wall 1.png}
+        \caption{High level view}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}[b]{0.45\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{figs/Memory wall 2.png}
+        \caption{Streaming Multiprocessor}
+    \end{subfigure}
+    \caption{Ampere Architecture.}
+    \label{fig:ampere}
+\end{figure}
+
+\paragraph{Challenges}
+The currently most compelling challenge of hardware accelerators is referred to as the \textbf{memory wall} \ref{Prabhakar2024}. In the last 20 years, parallel floating-point performance grew by a factor of 3 every two years, while memory bandwidth only improved by a factor of 1.6. As the gap between computation and memory throughput expands, applications become more and more memory-bound. For this reason, many of the innovations introduced by the architectures presented in this chapter are motivated by improvements in memory throughput.
+
+Another increasing gap exists between the amount of memory offered by accelerators and the size of Neural Networks. In fact, every year, larger models are proposed as the new state-of-the-art solution to compelling problems such as Natural Language Processing. The growth of parameters in Transformer Networks is particularly alarming, as they grew by a factor of 410 every two years from 2018 to 2022, while the accelerator's DRAM memory only grew by a factor of 2 every two years. Typically, larger models are processed by a set of interconnected notes, but this approach cannot scale indefinitely, as inter-chip bandwidth scales by a factor of only 1.4 every two years.
+To tackle these challenges, vendors started offering solutions that feature multiple dies on the same board, interconnecting them with on-chip networks rather than inter-chip networks, offering better throughput.
+
+ 
+\subsection{Graphics Processing Units (GPU)} \label{gpu}
+\subsubsection{Early NVIDIA GPUs}
+\label{gpu1}
+\paragraph{The first GPU}
+The first NVIDIA Graphics Processing Unit (GPU) was presented in 1999 and was called \textbf{GeForce 256}. It features heterogeneous fixed-function processors for different tasks related to computer graphics. In particular, they featured Vertex and Pixel-fragment processors. Vertex processors transform coordinates into screen space, while Pixel-fragment processors are responsible for raster operations. Those early generations of GPUs were \textbf{not suitable for general-purpose} parallel computing and were not usable for DNN training or inference.
+
+\paragraph{The first GPGPU}
+In 2007, NVIDIA transformed the traditional GPU architecture with the introduction of the \textbf{NVIDIA Tesla} architecture \cite{lindholm2008nvidia}, which is considered to be the first example of a \textbf{GPGPU (General Purpose GPU)}. Unlike earlier designs with two distinct processor types, Tesla GPUs incorporated a set of homogeneous, fully programmable general-purpose processors. The motivation behind this change was to allow the programmer to balance between vertex and pixel-fragment operations dynamically, but it also allowed GPUs to be used for other parallel applications besides rendering. 
+
+\paragraph{CUDA}
+Alongside the Tesla architecture, NVIDIA introduced the Compute Unified Device Architecture (\textbf{CUDA}), a parallel computing programming model designed explicitly for NVIDIA general-purpose GPUs. CUDA is a minimal extension of C and C++ that provides an API to manage the CPU-GPU bus, allocate global and shared memory on the GPU, and organize thread execution into warps, blocks, and grids.
+
+\paragraph{DNN training with GPUs}
+
+Following the Tesla architecture, NVIDIA continued to innovate in GPGPU design by introducing new features and consistently enhancing performance and throughput. In 2010, NVIDIA unveiled the Fermi architecture \cite{wittenbrink2011fermi}, the first GPU to support double-precision calculations. NVIDIA Fermi GPUs, specifically two GTX 580s, were used to train \textbf{AlexNet} \cite{NIPS2012_c399862d}, the deep convolutional neural network that won the 2012 ImageNet competition. This success demonstrated that Deep Convolutional Neural Networks (CNNs) were the best approach for image classification tasks at the time and showed that General-Purpose GPUs were essential for training such models efficiently.
+
+In 2012, Stanford researchers further proved the power of GPUs by training networks with over 1 billion parameters using 16 CPU-GPU nodes. Previous efforts required up to 16.000 CPU cores and were only able to train models 6.5 times smaller \cite{Coates2013}.
+
+The success of GPUs as accelerators for deep neural network (DNN) training prompted vendors like NVIDIA and AMD to develop GPGPUs tailored specifically for scientific computing and machine learning (ML) workloads. These GPUs prioritize features essential for DNN training, such as high-bandwidth memory (HBM) and advanced interconnect technologies like NVLink, which enable efficient multi-GPU training while omitting unnecessary graphics-oriented functionalities. A notable example of this innovation is the NVIDIA \textbf{P100} GPU (Pascal generation), the first GPU explicitly designed for data center AI workloads.
+
+\subsubsection{NVIDIA Tesla, the first GPGPU}
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.45\textwidth]{figs/NVIDIA Tesla.png}
+    \caption{High-Level Diagram of NVIDIA Tesla.}
+\end{figure}
+
+As a representative of all the NVIDIA architectures before the introduction of NVIDIA Volta, the original NVIDIA Tesla GPGPU architecture is presented in this section.
+
+\paragraph{Processors}
+NVIDIA Tesla's architecture features a scalable array of 16 \textbf{Streaming Multiprocessors (SMs)} organized in blocks called Texture/Processor Clusters (TPCs). Each Streaming Multiprocessor features eight Streaming Processor (SP) cores, also known as CUDA cores, two Special Functional Units (SFUs), and a multithreaded instruction fetch and issue unit.
+\paragraph{Scheduling} \label{SIMT}
+The most revolutionary feature of the SM is the \textbf{Same Instruction Multiple Threads (SIMT)} scheduling.
+SIMT architectures group independent threads executing the same program into a warp of 32, performing a single fetch and issue per warp. Each thread operates with an independent control flow and can execute data-dependent branching instructions. When threads diverge (taking different branch directions), the SM first fetches and issues instructions for threads following one direction, then repeats the process for the other. This approach offers greater flexibility than SIMD architectures while maintaining equivalent data-parallel capabilities when there is no thread divergence.
+Each SM manages up to 24 warps and has a scoreboard that decides which warp to issue at each cycle.
+\paragraph{Memory}
+GPUs are shared memory architectures and feature a complex memory structure.
+From a programmer's standpoint, memory can be allocated at three levels:
+\begin{itemize}
+    \item \textbf{Local memory}, which is private to each thread;
+    \item \textbf{Shared memory,} which is shared by all the threads in the same SM;
+    \item \textbf{Global memory} is shared by all the threads.
+\end{itemize}
+To hold the shared memory, each SM features 16 KB of SRAM, while the Local and Global memories are stored on a large off-chip DRAM connected to the chip via the interconnection network. The  RAM is organized into six portions, all featuring an L2 cache. Multiple memory accesses from the same warp directed to the global memory are coalesced into fewer memory block accesses to improve memory bandwidth.
+
+\subsubsection{NVIDIA Tensor Core GPUs}
+The success of the NVIDIA Tesla P100, combined with the rise of domain-specific architectures such as Google's TPU (section \ref{TPU}), motivated NVIDIA to incorporate domain-specific features for deep neural network (DNN) training and inference into its GPGPUs. Notably, NVIDIA introduced a dedicated matrix-multiply-and-accumulate unit optimized for mixed precision, known as \textbf{Tensor Cores}, within the Streaming Multiprocessors.
+To this day, three generations of NVIDIA datacenter GPUs exist: NVIDIA Volta (2017), NVIDIA Ampere (2020), and NVIDIA Hopper (2022).
+Those architectures are by far the most used by industry and researchers for DNN training and inference. For this reason, they represent the baseline for almost all the performance evaluations of DNN accelerators.
+In this section, those architectures are discussed in detail to highlight their distinctive features and the novelties they introduced.
+
+\begin{comment}
+\begin{table}[h!]
+    \centering
+    \begin{tabular}{l|cccccc}
+        \toprule
+        \textbf{Architecture} & \textbf{SMs} & \textbf{Tensor Cores} & \textbf{FP64 Cores} & \textbf{FP32 Cores} & \textbf{Int Cores} \\
+        \midrule
+        NVIDIA V100  & 80  & 640 & 2560  & 5120  & 5120  \\
+        NVIDIA A100  & 108 & 432 & 3456  & 6912  & 6912  \\
+        NVIDIA H100  & 132 & 528 & 8448  & 16896 & 8448  \\
+        \bottomrule
+    \end{tabular}
+    \label{tab:gpu_comparison}
+\end{table}
+
+\begin{table}[h!]
+    \centering
+    \begin{tabular}{l|c|c|cc|c}
+        \toprule
+        \textbf{Architecture} & \textbf{L1 Cache} & \textbf{L2 Cache} & \textbf{DRAM} & \textbf{DRAM TP} & \textbf{NVLink} \\
+        \midrule
+        NVIDIA V100 & 128 KB & 6 MB  & 32 GB (HBM2) & 0.90 TB/s  & 300 GB/s \\
+        NVIDIA A100 & 192 KB & 40 MB & 40/80 GB (HBM2e) & 2.04 TB/s  & 600 GB/s \\
+        NVIDIA H100 & 256 KB & 50 MB & 80/96 GB (HBM3) & 3.35 TB/s  & 900 GB/s \\
+        \bottomrule
+    \end{tabular}
+    \label{tab:memory_comparison}
+\end{table}
+\end{comment}
+\begin{comment}
+\subsubsection{NVIDIA Volta V100}
+\begin{figure}[h!]
+    \centering
+    \begin{subfigure}[b]{0.45\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{figs/Volta.png}
+        \caption{High level view}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}[b]{0.45\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{figs/Volta SM.png}
+        \caption{Streaming Multiprocessor}
+    \end{subfigure}
+    \caption{Volta Architecture.}
+    \label{fig:volta}
+\end{figure}
+\end{comment}
+\paragraph{Processors}
+The NVIDIA Volta V100 \cite{choquette2018volta} is structured in six GPU Processing Clusters (GPCs) and features 80 Streaming Multiprocessors (SMs) in total.
+Each SM has four processing blocks, each featuring eight double-precision floating-point cores (fp64), sixteen single-precision floating-point cores (fp32), sixteen integer units (int32), two Tensor Cores, and a Special Functional Unit (SFU).
+\paragraph{Tensor Cores}
+The major novelty of those renewed Streaming Multiprocessors is the introduction of the \textbf{Tensor Cores}, a dedicated functional unit that performs a matrix-matrix multiplication and accumulation ($A \times B+C=D$) on 4 x 4 matrices. In the first generation of the Tensor Core, $A$ and $B$ are half-precision, while $C$ and $D$ can be full or half-precision.
+
+\paragraph{Memory and Connectivity}
+Another major novelty is the unification of the L1 cache and the shared memory. According to the needs of the application, the programmer can use up to 96 KB out of the 128 KB of L1 cache as shared memory, keeping the others as cache.
+The chip also offers 6MB of L2 cache, shared by all the GPCs, that acts as an intermediary between the SMs and the off-chip memory, consisting of 16 GB of HBM2 that operates at 0.90 TB/s.
+\begin{comment}
+\subsubsection{NVIDIA Ampere A100}
+\begin{figure}[h!]
+    \centering
+    \begin{subfigure}[b]{0.45\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{figs/Ampere.png}
+        \caption{High level view}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}[b]{0.45\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{figs/Ampere SM.png}
+        \caption{Streaming Multiprocessor}
+    \end{subfigure}
+    \caption{Ampere Architecture.}
+    \label{fig:ampere}
+\end{figure}
+\end{comment}
+The NVIDIA Ampere A100 \cite{Choquette2021} represents a significant advancement over its predecessor, introducing numerous innovations and improvements.
+\paragraph{Processors}
+It contains 108 Streaming Multiprocessors composed of four processing blocks, each featuring eight double-precision functional units, 16 single-precision functional units, 16 integer units, and a third-generation Tensor core.
+\paragraph{Tensor Cores}
+Unlike the first-generation Tensor Cores that require fp16 data, A100 Tensor Cores support many data types and offer \textbf{fine-grained sparsity optimization}, which doubles the throughput of sparse matrix multiplication. In particular, they support int4, int8, fp16, bf16, fp16, and tf32 data types. Out of those, it is particularly noticeable the \textbf{Tensor Float (tf32) format}. Tf32 variables have one bit for the exponent, 8 bits for the exponent (like fp32 and bf16), and 10 bits for the mantissa (like fp16). Bina y, full, and double-precision matrix-matrix multiplications are also possible, but with lower throughput and no support for fine-grained sparsity.
+
+%\begin{figure}[htbp]
+%    \centering
+%    \includegraphics[width=0.6\textwidth]{figs/A100 vs V100.jpg}
+%    \caption{Tensor Core Comparison}
+%    \label{fig:tensor1}
+%\end{figure}
+
+Even if it is not disclosed in the architectural paper, sources report that each SM features a Tensor Core that multiplies a 4 x 8 matrix with an 8 x 8 one.
+As a result, the A100 offers a throughput improvement of 2x per Tensor Core and 2.5x per GPU over the V100 on dense matrix-matrix multiplication in half precision. If the matrices are sparse, the improvement has an additional 2x.
+\paragraph{Memory}
+To match the enhanced throughput, the A100 improves data delivery to the Tensor Cores by introducing asynchronous copy operations, allowing data to be loaded directly from global memory to shared memory (eliminating two unnecessary copies), and by halving the number of operations required to transfer data from shared memory to the Tensor Cores (avoiding two additional copy operations).
+
+To support larger models, the size of memory is significantly increased: the L2 cache is increased from 6 to 40 MB, and the VRAM is increased from 16 to 40 or 80 GB of HBM2. There is also an improvement of 2.3x in L2 cache throughput and 1.7x in HBM throughput. Additionally, the A100 offers an in-hardware data compression feature that improves bandwidth by up to 4x.
+\paragraph{Connectivity}
+The other novelties of the A100 are the third-generation NVLink, which doubles the throughput compared to the V100, and the Multi-Instance GPU (MIG) feature that allows the support of up to seven independent virtual GPUs on the same physical GPU.
+
+\subsubsection{NVIDIA Hopper H100}
+\begin{comment}
+\begin{figure}[h!]
+    \centering
+    \begin{subfigure}[b]{0.45\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{figs/Hopper.jpg}
+        \caption{High level view}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}[b]{0.45\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{figs/Hopper SM.jpg}
+        \caption{Streaming Multiprocessor}
+    \end{subfigure}
+    \caption{Hopper Architecture.}
+    \label{fig:hopper}
+\end{figure}
+\end{comment}
+\paragraph{Processors}
+The NVIDIA Hopper H100 \cite{Choquette2023} represents an ulterior step forward with respect to the NVIDIA Ampere A100, featuring 132 redesigned Streaming Multiprocessors. Each multiprocessor comprises four processing blocks, with each block integrating 16 double-precision units, 32 single-precision units, 16 integer units, and a fourth-generation Tensor Core.
+\paragraph{Tensor Cores}
+The renewed Tensor Cores support new data types and double the throughput for previously supported ones (tf32, fp16, bfloat16, int8), with the exception of int4, which is no longer supported. The novelty is represented by the support for fp8 format (8-bit floating point), which can either have five or four bits of exponent and, respectively, two or three bits for the mantissa.
+As its predecessor, the fourth-generation Tensor Core supports fine-grained sparsity, which offers up to 2x throughput on sparse matrix multiplication.
+Even if it is not disclosed in the architectural paper, sources report that the H100 Tensor Core multiplies 4 x 16 matrices with 16 x 8 ones.
+
+%\begin{figure}[htbp]
+%    \centering
+%    \includegraphics[width=0.5\textwidth]{figs/A100 vs H100.jpg}
+%    \caption{Tensor Core Comparison}
+%    \label{fig:tensor2}
+%\end{figure}
+\paragraph{Memory}
+The off-chip memory consists of 80 GB of HBM3 that offers 50\% faster data transfer compared to the A100. The two caches are increased to 50 MB, and the L1 cache is increased to 256 KB per SM.
+To improve data locality, the Hopper architecture adds a new level in the CUDA hierarchy: the \textbf{thread block cluster}, which sits between the thread blocks and the grid and consists of up to 16 thread blocks. The cluster can benefit from improved data locality thanks to the new \textbf{SM-to-SM communication network} that allows SMs to access the shared memory of other Streaming Multiprocessors and to synchronize on barriers distributed in shared memory.
+\paragraph{Connectivity}
+The Hopper Architecture also offers the fourth generation of NVLink and new types of barriers that facilitate asynchronous execution of threads and asynchronous data transfers.
+\paragraph{Grace-Hopper}
+Together with Hopper, NVIDIA also introduced \textbf{Grace}, a CPU featuring 72 Arm v9.0 cores explicitly designed to be paired with a GPU on a CPU-GPU System on a Chip (SoC). 
+The \textbf{Grace-Hopper GH200} features a Grace CPU and a Hopper H100 GPU interconnected by a 900 GB/s cache-coherent interconnection (NVLink-C2C). In total, the SoC has 96 GB of HMB memory and 512 GB of LPDDR5X DRAM. All the memory can be directly accessed by both processors, as they share the same system-wide page table.
+
+ 
+\subsubsection{AMD}
+
+\paragraph{AMD Datacenter GPUs}
+AMD represents the biggest competitor of NVIDIA, both in the consumer and data center markets of GPUs. 
+For what concerns datacenter GPUs oriented towards scientific computing and ML, AMD features a lineup called \textbf{Instinct MI}, which directly rivals NVIDIA datacenter cards.
+Similarly to what happened with NVIDIA cards, the first generations of Instinct MI cards shared their architecture with graphics cards. In particular, the MI25 (2017), MI50, and MI60 (2018) belonged to the Vega family.
+
+In 2020, AMD decided to split its lineup into computer graphics-oriented GPUs (RDNA) and datacenter-oriented GPUs (CDNA). CDNA cards lose all the domain-specific features related to rendering while offering dedicated matrix-multiply units, similar to NVIDIA Tensor Cores.
+At the moment, three generations of CDNA cards exist: CDNA (2020), CDNA2 (2021), and CDNA3 (2024). In this section, those three architectures are discussed in detail, as they represent the biggest competitor of NVIDIA GPUs for DNN inference and training. 
+
+\paragraph{Exascale Computing Program}
+As reported by AMD researchers \cite{Loh2023}\cite{Smith2024}, AMD's CDNA architectures are closely tied to the \textbf{AMD EHP concepts}. These concepts were developed for the Department of Energy's Exascale Computing Program, marking the initial steps toward creating exascale-ready APUs (CPU-GPU SoCs). These efforts culminated in the AMD MI250X, featured in Frontier, and the AMD MI300A, featured in El Capitan—currently ranked first and second on the Top500 list.  
+
+\subsubsection{AMD CDNA 1}
+\begin{comment}
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=0.45\textwidth]{figs/CDNA.png}
+    \caption{High-level view of AMD CDNA}
+\end{figure}
+\end{comment}
+\paragraph{Processors}
+The \textbf{AMD Instinct MI100 GPU} is the first CDNA GPU.
+It features 120 Compute Units (CU) organized in four arrays. CUs feature both scalar and vector capabilities thanks to dedicated register files, execution units, and cache for both scalars and vectors. Vector execution units execute 64-wide wavefronts (similar to NVIDIA warps) over four cycles thanks to a 16-wide SIMD vector pipeline that operates on single and double-precision data types.
+\paragraph{Matrix Units}
+The novelty of CDNA CUs is the introduction of \textbf{Matrix Fused Multiply-Add or MFMA units} that, similarly to NVIDIA Tensor Cores, perform matrix-matrix multiplications. The supported data types are fp32, fp16, bfloat16, and int8, while the output is either in fp32 or int32 format. The major shortcoming of this generation of MFMAs is the fact that bf16 matrix-matrix multiplications have half the throughput compared to fp16 ones.
+\paragraph{Memory and Connectivity}
+The memory hierarchy of CDNA is composed of the scalar and vector data caches of CUs, 8 MB of L2 cache shared by all the CUs, and 32 GB of off-chip HMB2 memory that operates at 1.23 TB/s.
+The MI100 is also the first card to feature AMD's \textbf{Infinity Fabric} technology that allows inter-GPU communication like NVIDIA's NVLink.
+
+\subsubsection{AMD CNDA 2}
+\begin{comment}
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=0.45\textwidth]{figs/CDNA2.png}
+    \caption{High-level view of AMD CDNA2}
+\end{figure}
+\end{comment}
+The second generation of AMD CDNA cards, which powers both El Capitan's and Frontier's and El Capitan's nodes (now ranked first and second on Top500), represents an important step forward in AMD's GPU design.
+\paragraph{Multi-die GPU}
+The basic building block of CDNA 2 GPUs is called the Graphics Compute Die (GCD). Each GCD features four arrays of 28 Compute units, for a total of 112 (104 active in the MI210 and MI250 and 110 active in the MI250X). CDNA 2 introduces the concept of \textbf{multi-die GPUs}, significantly enhancing computational power. While the MI210 features a single GCD, the MI250 and MI250X are equipped with two GCDs, effectively doubling both the computational performance and memory capacity within a single board.
+\paragraph{Processors}
+Compute Units feature scalar, vector, and matrix cores. Vector cores operate on 64-wide wavefronts with 16-wide pipelines for single and double-precision data types. Compared to its predecessor, the CDNA 2 Compute Units improve double-precision performance two-fold and support the new packed floating point data type, which allows faster throughput on floating point operations.
+\paragraph{Matrix Units}
+Also, the matrix units undergo major improvements, doubling the throughput for bfloat16 matrix-matrix multiplication to match the fp16 throughput and adding support for double-precision matrices. At the moment, no NVIDIA GPU supports double-precision in its Tensor Cores, making AMD superior in scientific applications that require double-precision. This could also be part of the motivation why AMD GPUs are so dominant in the Top500 leaderboard (five data centers in the top 10 feature CDNA 2 or CDNA 3 GPUs).
+Other than the data types, the supported matrix shape of the matrices has also changed. The first generation supported the product of two 4 x 4 matrices, while the second generation added support for a 16 x 16 matrix times a 16 x 4 matrix.
+\paragraph{Memory}
+For what concerns memory, each GCD features 8 MB of L2 cache and 64 GB of HBM2e memory (1.6 TB/s), doubling the memory at both levels compared to CDNA 1.
+
+A major innovation of CDNA 2 is the adoption of an innovative caching system that allows for a unique memory addressing space for both the CPU and the GPU memory, simulating an APU system where no CPU-GPU data transfers are necessary. 
+
+\subsubsection{AMD CNDA 3}
+\begin{comment}
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=0.45\textwidth]{figs/CDNA3.png}
+    \caption{CDNA3 MI300X and MI300A}
+\end{figure}
+\end{comment}
+\paragraph{GPU and APU}
+The third generation of CDNA cards adopts an even more advanced approach to dense integration than CDNA 2, combining multiple dies within a single chip. This design realizes the 12-year-old AMD vision of a heterogeneous APU\cite{Smith2024}, incorporating both CPUs and GPUs on the same chip. The  DNA 3 family features two cards: the MI300X and the MI300A. The MI300X features eight accelerator complex dies (XCDs), similar to CDNA 2 GCDs, while the MI300A features six XCDs and three CPU complex dies (CCDs). 
+\paragraph{Processors}
+The XCD features 40 CUs (38 active) and a set of shared resources, including the scheduler and four Asynchronous Compute Engines (ACE) that assign computing tasks to the Compute Units (CUs). The CUs also share 4 MB of L2 cache and have 32 KB of L1 cache each.
+The biggest improvement compared to the previous generation is in the Matrix Cores, which offer improved performance compared to the previous generation and support new data types (Tensor Float and fp8).
+\paragraph{Memory}
+Another important difference from the previous generation is the introduction of a new level of cache called Infinity cache, which sits between the off-chip memory and the on-chip L2 cache. The off-chip memory also underwent significant improvement, offering 128 GB of HMB3 memory (5.3 TB/s) on the MI300A and 192 GB on the MI300X. As in CDNA 2, CDNA 3 offers a unique memory addressing space shared by the CPU and the GPU, with the difference that in the MI300A APU, the memory is not only logically but also physically shared by the CPU and the GPU.
+
+ 
+\subsubsection{Intel}
+
+ 
+\subsection{TPUs and TPU-inspired architectures} \label{tpu}
+\subsubsection{Google Tensor Processing Unit (TPU)} \label{TPU}
+\paragraph{Motivation}
+After the victory of AlexNet in the ImageNet Competition in 2012, it was clear that the demand for Neural Networks in the data center would have increased significantly. In particular, Google realized that its new DNN-based search-by-voice mechanism could easily double its data centers' computing demand. So, in 2013, they started a high-priority program to develop and deploy an accelerator that could cut energy consumption tenfold compared to CPUs in inference tasks\cite{Jouppi2017}. To achieve their goal, they decided to take a completely different approach compared to General-Purpose GPUs or multi-core CPUs. Rather than having a many-core, shared memory, general-purpose accelerator, they opted for a single-core domain-specific accelerator featuring a specialized functional unit for matrix multiplication (Matrix Multiplication Unit). This functional unit exploits spatial computation to avoid energy-hungry memory accesses and control operations\cite{jouppi2018motivation}, making the chip extremely energy efficient.
+The success of this approach proved the effectiveness of domain-specific architectures as machine learning accelerators, representing a turning point in the history of hardware accelerators.
+\paragraph{TPU generations}
+Currently, there are six generations of TPUs: TPU v1 (2015), TPU v2 (2017), TPU v3 (2018), TPU v4 (2021), TPU v5 (2023), and TPU v6 (2024).
+This section covers the architecture of the first four generations since little information about the last two generations is publicly available.
+
+\subsubsubsection{TPU v1} \label{tpu1}
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.45\textwidth]{figs/TPUv1.png}
+    \caption{High-Level Diagram of TPU v1.}
+\end{figure}
+
+\paragraph{Strucure}
+The first generation of Google's TPU\cite{Jouppi2017} is a PCIe-attached co-processor built to cut the operational cost of DNN inference. Since most of the computational cost of processing DNNs is associated with matrix-matrix multiplications and convolutions, the heart of the TPU is the \textbf{Matrix Multiply Unit (MXU)}: a 256-by-256 systolic array of int8 matrix multipliers. Each clock cycle, the MXU produces a 256-element partial sum (16-bit elements), which is accumulated into 4MB of dedicated 32-bit accumulator registers. Other critical components of DNN inference, such as normalization, pooling, and activations, are handled by dedicated units directly attached to the accumulator registers.
+
+The effectiveness of the MXU lies in its \textbf{systolic array} structure, which exploits spatial computing to reduce energy-hungry memory accesses while achieving high data parallelism.
+Other than its structure, another noticeable feature of the first MXU is the choice of the data type. In fact, Google engineers decided to adopt 8-bit integers rather than floating points as they believed that the loss in accuracy caused by quantization was justified by the gain in energy efficiency.
+
+\paragraph{Memory}
+Besides the accumulator registers, the TPU features a complex memory structure that balances the trade-off between capacity and throughput. The model's weights, which are read-only, are fed to the MXU via an on-chip weight FIFO that reads from the off-chip weight memory (8 GB of DDR3 DRAM). The unified Buffer, a 24 MB on-chip scratchpad memory (SRAM), holds data that requires reading and writing, such as the inputs and layer outputs of the DNN. A programmable DMA controller transfers data between the CPU host memory and the Unified Buffer.
+\paragraph{Instruction Set}
+The TPU is an example of a Very Long Instruction Word (VLIW) architecture, meaning each instruction encodes multiple operations (e.g., reading or writing host memory, matrix multiplication, convolution, and activation). MMU utilization can be maximized by overlapping matrix multiplication with other operations, including loads and stores. As is typical for VLIW architectures, the compiler performs instruction scheduling statically. The choice of a VLIW architecture is typical for DSAs and was motivated by the simplicity of the hardware design compared to dynamically scheduled architectures and the availability of well-established compiler optimization techniques for instruction scheduling of VLIW architectures.
+
+\subsubsubsection{TPU v2 and TPU v3}
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.45\textwidth]{figs/TPUv2.png}
+    \caption{High-Level Diagram of TPU v2.}
+\end{figure}
+The second generation of TPUs \cite{Norrie2021}, introduced two years after the first, is designed to tackle the more complex task of deep neural network (DNN) training. While this version is not intended for inference, its design addresses several shortcomings of the first-generation TPUs, making it highly relevant.
+\paragraph{Memory}
+The primary differences between TPU v1 and TPU v2 lie in the pipeline architecture and memory structure. The memory structure evolves significantly to meet training demands, which requires more memory than inference and where weights are no longer read-only. Activation storage and accumulator registers are merged into a single scratchpad memory (SRAM) called Vector Memory. Additionally, off-chip memory is no longer directly attached to the Matrix Multiply Unit (MXU). Inst ad connects to the Vector Memory.
+The off-chip memory capacity increases from 8 GB to 16 GB, and HBM is used instead of standard DDR memory, improving throughput by a factor of 20.
+
+\paragraph{Processor}
+The pipeline is restructured to align with the new chip organization: instructions are fetched by the scalar unit, which handles scalar operations. Vector operations are issued to the vector unit, with the MXU functioning as a co-processor for the vector unit. Data vectors move from the vector unit to the MXU via a push operation. The  XU results are stored in a results FIFO queue, from which the vector unit retrieves them using a pop operation.
+
+\paragraph{Data Types}
+Another significant change in TPU v2 is the adoption of new data types. Unlike 8-bit integer quantization, which is effective for inference, training requires floating-point precision. This motivates the transition from 8-bit integers to bfloat16, a truncated version of the IEEE 754 32-bit floating-point format.  This format minimizes hardware complexity while maintaining acceptable numerical accuracy.
+\paragraph{Matrix unit}
+Adopting bfloat16 significantly impacts the MXU design, which features 128×128 bfloat16 multipliers instead of 256×256 int8 multipliers. Similarly, the vector memory is restructured to store 128-element vectors of bfloat16 instead of 256-element vectors of int8. Although bfloat16 was uncommon at the time, its adoption in TPU v2 helps establish it as an industry standard for DNN domain-specific accelerators (DSAs), bolstered by the success of the second-generation TPU.
+
+In addition to the scalar unit, vector unit, and MXU, TPU v2 includes dedicated hardware units for matrix operations, such as transpositions, row reductions, and column permutations.
+\paragraph{Mutlicore design}
+TPU v2 also introduces a dual-core design. Each core features an on-chip router that manages interconnection between the two cores and supports a 2D torus interconnection between multiple TPUs through four off-chip links.
+\paragraph{TPU v3}
+The upgrade from the second and the third did not involve any radical redesign but simply an upgrade of some components. In particular, each core has two MXUs instead of one, the clock speed is increased,  HBM memory is faster and doubled in size, and interconnectivity is improved to support larger networks.
+
+\subsubsubsection{TPU v4i}
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.45\textwidth]{figs/TPUv4.png}
+    \caption{High-Level Diagram of TPU v4i.}
+\end{figure}
+Introduced in 2021, the fourth generation of TPUs \cite{Jouppi2021} offers two distinct types of cards: one for training and another for inference. The  PU v4, like its predecessors TPU v2 and TPU v3, is a multi-core chip designed specifically for training workloads. In contrast, the TPU v4i is a single-core card optimized for inference, similar to the original TPU v1.
+\paragraph{Memory}
+Despite the different purposes of TPU v4 and TPU v4i, many architectural decisions from the second and third generations are also present in the inference-focused chip of the fourth generation. One notable similarity is in the off-chip memory architecture. Unlike TPU v1, which relied on DDR3 memory, TPU v4i employs HBM (High Bandwidth Memory) technology to achieve significantly higher throughput. However, the structure of the on-chip memory has been further refined. Like previous generations, the TPU v4i features scratchpad memory (Vector Memory) to store vectors of data close to its vector and matrix units. Additionally, it introduces a new 128 MB SRAM known as Common Memory (CMEM), which acts as an intermediary layer between HBM and vector memory. Smaller dedicated memory units are also present to store scalar values and instructions.
+\paragraph{Data Types}
+Another similarity is the range of supported data types. Unlike TPU v1, which supported only integers, TPU v2 supports both int8 and bfloat16 formats. This change reflects the increased accuracy requirements from 2017 to 2021. Over time, the numerical approximations caused by int8 quantization have been found to negatively impact model accuracy in certain domains. To address this, newer inference chips like TPU v4i support quantization but do not require it. \cite{Jouppi2021}
+\paragraph{Matrix Unit}
+Finally, TPU v4i, like TPU v3, includes multiple MXUs (Matrix Multiply Units) per core. TPU  4i features four MXUs per core, doubling the number in the previous generation. As with the second and third-generation cards, MXUs act as co-processors for the vector unit.
+
+ 
+\subsubsection{Habana Labs Tensor Processing Cores (TPC)}
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.35\textwidth]{figs/HL TPC.png}
+    \caption{High-Level Diagram of Habana Goya.}
+\end{figure}
+Acquire by Intel in 2019, Habana Labs is a startup founded in 2016 that builds hardware accelerators for AI training and inference.
+Habana Labs' approach to domain-specific accelerators shares similarities with Google's, as both architectures are centered around a matrix-multiply unit designed as a systolic array of multiply-accumulate functional units. However, the key difference lies in their business models: Google offers TPUs primarily through a hardware-as-a-service (HaaS) model, while Habana Labs sells the hardware directly to customers.
+
+Its lineup consists of two hardware accelerators for DNN inference: Habana Goya (2018), and Habana Greco (2022), and a family of hardware accelerators for DNN training: Habana Gaudi (2019), Habana Gaudi2 (2022), and Habana Gaudi3 (2024).
+
+\subsubsection{Habana Goya}
+Targeted for DNN inference, Goya \cite{Gwennap2019} is the first chip presented by Habana Labs.
+\paragraph{Processors}
+Each Goya card features an HL-1000 processor, which consists of eight Tensor Processing Cores (TPCs), a GEMM engine, and memory units. TPCs are VLIW processors that feature SIMD and AI-specific functional units. SIMD units process both integers (8, 16, and 32 bits) and floating-point (32 bits) values. The  EMM engine closely resembles the MXU of the first TPU as it is a 256 by 256 matrix multiply unit that processes 8-bit integer values. Unlike Google's TPU, which has one or two MXUs per core, Goya has a single GEMM per chip and eight cores that use it as a co-processor.
+\paragraph{Memory}
+The memory structure of Goya also resembles Google's TPU as it is composed of an off-chip DRAM memory (16 GB DDR4), a local SRAM memory, and registers local to each TPC. The key difference between the two is that the SRAM memory is shared between all the cores.
+\subsubsection{Habana Gaudi}
+\paragraph{Processors}
+Released a few months later, the first version of Gaudi \cite{Gwennap2019}, the training printed chip of Habana Labs, deeply resembles Goya in its structure. To transform Goya into a training chip, Habana Labs performed three key upgrades. The first regards the GEMM engine, which, unlike that of Goya, supports floating-point operations.
+\paragraph{Memory} The second regards off-chip memory, which has been upgraded from 16 GB of DDR4 to 32 GB of HBM2 memory. The third one regards the capability of connecting multiple cards in parallel, thanks to 10 100 GB/s network interfaces, which allow for performing memory-to-memory transfer over Ethernet.
+\paragraph{Gaudi2}
+Gaudi2 \cite{gaudi2} represents an upgrade to the architecture of Gaudi: the cluster of TPCs is tripled in size (24 cores), the DRAM memory is faster and three times larger (6 x 16 GB HBM2E memory), and the network connectivity now consists of 24 100 GB/s Ethernet ports instead of 10. Another major upgrade is in the support for mixed precision data types. In fact, while Gaudi only supported 32-bit floating points, Gaudi 2 also supports bfloat16, float16, and float8 data types both in its TPCs and in the GMEM engine. Finally, Gaudi2 features dedicated decoding engines that are responsible for decoding compressed image and video data.
+\paragraph{Gaudi3}
+Gaudi3 \cite{Kaplan2024} represents an ulterior upgrade compared to Gaudi2. Similarly to what Google did with the second generation of TPUs, Habana Labs decided to scale out its architectures by having four homogeneous clusters, each composed of 16 TPCs and two Matrix Multiply Engines (MMEs) for a total of 96 TPCs and 8 MMEs. The memory is also upgraded, changing the type of the shared memory from SRAM to 48 MB of SRAM to 96 MB of L2 cache and increasing the size of DRAM memory from 6 x 16 to 8 x 16 blocks of HBM2E memory.
+
+ 
+\subsection{Dataflow Architectures} 
+\label{dataflow}
+\subsubsection{Plasticine}
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.45\textwidth]{figs/plasticine.png}
+    \caption{High-Level Diagram of Plasticine.}
+\end{figure}
+Plasticine \cite{Prabhakar2017} is a prototype architecture introduced in 2017 by a group of Stanford University researchers to be a spatially reconfigurable architecture that efficiently executes parallel patterns (i.e., map and reduce). Although Plasticine never became a commercial product, it inspired the design of modern spatial architectures like Sambanova (Section \ref{sn}).
+
+\paragraph{CGRA}
+Plasticine belongs to the category of coarse-grained reconfigurable architectures (CGRAs). Unlike traditional FPGAs, which are fully reconfigurable and support bit-level manipulation, CGRAs feature larger processing elements, such as ALUs and DSPs, that support word-level operations. CGRA differs from FPGAs in terms of interconnectivity. While FPGAs offer a highly flexible interconnect fabric that allows any logic block to connect to any other, CGRAs use simpler, more structured interconnects between processing elements. By sacrificing some flexibility and fine-grained bit manipulation, CGRAs provide dense computing resources, power efficiency, and clock frequencies that are up to an order of magnitude higher than traditional FPGAs.
+According to the taxonomy proposed by Liu et al. for CGRAs\cite{Liu2019}, Plasticine uses the dataflow programming model, supports both Single and Multiple configurations with data parallelism, and adopts the static-scheduling-static-dataflow (SSD) execution model.
+\paragraph{Structure}
+Plasticine is structured like a grid of interconnected styles of two different types:
+
+\begin{itemize}
+\item \textbf{Pattern Compute Units (PCUs)}: PCUs are designed to execute parallel patterns (such as map and reduce) through a multi-stage, reconfigurable SIMD pipeline. Each stage of the SIMD pipeline includes a functional unit and associated pipeline registers. A reduction tree network and a shift network facilitate cross-lane communication. This design allows for two levels of parallelism: loop-level parallelism across data lanes and pipeline parallelism across stages.
+
+\item \textbf{Pattern Memory Units (PMUs)}: PMUs manage the distribution of on-chip memory. They resolve memory addresses and hold scratchpad memory, built with multiple SRAM banks matching the number of PCU lanes. These scratchpads can be configured in various banking modes to optimize access patterns.
+
+To interface with off-chip DRAM, Plasticine uses \textbf{Address Generators (AGs)}, a modified version of the PMU that includes FIFOs for holding outgoing commands and incoming responses. \textbf{Coalescing Units} help reduce the number of memory accesses by grouping sparse accesses into fewer coalesced ones.
+\end{itemize}
+\paragraph{Scheduling}
+The orchestration of Plasticine is managed using a hierarchical control scheme designed to minimize synchronization between units. This control scheme is based on three hierarchical controller protocols: sequential execution, coarse-grained pipelining, and streaming. When an application is mapped onto Plasticine, its pipeline is unrolled and mapped to virtual PMUs and PCUs, which are then mapped to one or more physical PCUs and PMUs.
+
+ 
+\subsubsection{SambaNova Systems Reconfigurable Dataflow Architecture (RDA)} \label{sn}
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.45\textwidth]{figs/SN RDU.png}
+    \caption{High-Level Diagram of SN RDA}
+\end{figure}
+The \textbf{Reconfigurable Dataflow Architecture (RDA)} is a computing architecture designed by SambaNova Systems to enhance both training and inference efficiency through a novel approach to software-hardware co-design \cite{sambanova}. Given the overlap in founding members between SambaNova Systems and the research group behind Plasticine and the significant similarities between the two architectures, the RDA can be regarded as an industry-ready evolution of Plasticine.
+\paragraph{Structure}
+At the core of the RDA is the \textbf{SambaNova Reconfigurable Dataflow Unit (RDU)}. The RDU's components and structure closely resemble Plasticine's, as it consists of a tiled arrangement of Pattern Compute Units (PCUs) and Pattern Memory Units (PMUs), all interconnected via a switching fabric. Additionally, access to off-chip memory is managed by Address Generator Units (AGUs) and Coalescing Units (CUs).
+\paragraph{Programmability}
+The key innovations introduced by SambaNova, compared to Plasticine, are primarily at the software level. While Plasticine requires applications to be written in the Delite Hardware Description Language (DHDL), SambaFlow integrates seamlessly with popular machine learning frameworks such as PyTorch and TensorFlow. This compatibility enables users to import models and serialized computation graphs developed with these frameworks.
+
+SambaFlow processes imported models using its Dataflow Graph Analyzer, which extracts dataflow graphs and determines the associated computation and communication requirements. This analysis facilitates efficiently mapping tasks to RDU resources while optimizing performance. The result is an annotated Dataflow Graph that serves as an intermediate representation for further compilation. The dataflow Compiler then refines these graphs by applying transformations such as pipelining and parallelization before mapping them onto the RDU hardware. Ultimately, it generates an executable file optimized for resource efficiency and high performance.
+
+The Template Compiler offers a high-level API for scenarios where necessary operators are unavailable, allowing users to define new operators. These operators are subsequently transformed into optimized implementations, referred to as Spatial Templates, for seamless integration into applications.
+
+RDA also supports the concurrent execution of multiple applications, enabling different applications or virtual machines (VMs) to coexist on the same RDU. Furthermore, it facilitates the execution of numerous intercommunicating sub-applications that constitute a mixed workload, such as data pre-processing, post-processing, and model training.
+
+ 
+\subsubsection{Cerebras Wafer-Scale Engine (WSE)}
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.45\textwidth]{figs/WSE.png}
+    \caption{High-Level Diagram of Cerebras WSE.}
+\end{figure}
+Cerebras is a startup founded in 2015 that builds hardware accelerators for DNN training and inference. Currently, they presented three systems: the CS-1 (2019) featuring the WSE-1, the CS-2 (2021) featuring the WSE-2, and the CS-3 (2024) featuring the WSE-3.
+\paragraph{Processors}
+As the name suggests, the Wafer-Scale Engine is the first processor to be as big as a silicon wafer (462.25 cm²). This large size allows for an unprecedented processor count. Name y, 400.000 for WSE-1, 850.000 for CS-2, and 900.000 for CS-3.
+Each core of the WSE is a general-purpose processor capable of performing arithmetic, logic, comparisons, load/store operations, and branch instructions \cite{Lie2023}. Cores also offer domain-specific capabilities thanks to their in-hardware support for tensors with up to 4 dimensions. Each core feature in hardware state machines and specific registers is called a data structure register (DSR), which contains a pointer and other information like the length, shape, and size of the tensor. This allows WSE cores to use tensors as first-class operands. Tens r operations are performed with a 64-bit data path that features four fused FPMAC units capable of operating with four fp16 or bfloat16 values.
+\paragraph{Memory}
+The WSE's memory is fully distributed to maximize throughput through the locality of the data. In fact, the Cerebras WSE does not feature shared DRAM, as most hardware accelerators do. Instead, each core has 48 kB of dedicated SRAM that takes 50\% of the die area. Cores can access only local memory, and data sharing must be done explicitly. The exclusive use of local memory allows the memory bandwidth to be equal to the operand bandwidth, eliminating the need for data reuse to achieve optimal throughput.
+
+Data sharing is assigned to the fabric router, which has four 32-bit outward-facing interfaces that connect to neighboring cores in the four cardinal directions and an interface facing the core itself. The four interfaces create a 2D mesh structure that allows the streaming of weights from the MemoryX unit (off-chip) to the local memories of the cores without the need to store the weights, even temporarily.
+\paragraph{Scheduling}
+As is typical for dataflow architectures, all the computation in the WSE is triggered by data. Data and instructions flow together through the fabric, and once they reach their destination, they trigger the execution. This allows for fine-grained sparsity optimization since the WSE has a mechanism that allows it to filter out all the computations to be performed on zero values, saving both time and energy.
+
+Unlike most dataflow architectures, the WSE features dynamic scheduling and Simultaneous Multi-Threading (SMT). Each core has up to 8 micro-threads, each of which corresponds to a tensor operation. Each core is responsible for monitoring the availability of inputs and outputs required by the micro-threads and picking the micro-thread to execute at each clock cycle based on availability and priority.
+
+ 
+\subsubsection{Graphcore Intelligent Processing Unit (IPU)}
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.35\textwidth]{figs/IPU2.png}
+    \caption{High-Level Diagram of GC IPU.}
+\end{figure}
+Graphcore is a startup founded in 2016 that builds hardware accelerators for AI. To this day, they have built two generations of their Intelligent Processing Unit (IPU): the GC2 (2017) and the GC200 (2020), and a third generation has been announced.
+\paragraph{Bulk Synchronous Parallel model}
+The IPU is built to offer true MIMD parallelism (as opposed to SIMT parallelism offered by GPUs) with a high thread count. To achieve this goal, Graphcore built a dataflow architecture that supports the Bulk Synchronous Parallel model (BSP) natively \cite{Jia2019}. This model distinguishes three different phases of parallel computation, called substeps:
+\begin{itemize}
+    \item Local computation: Each process performs computation on its local memory. No communication between processes happens.
+    \item Communication: Processes exchange data in an all-to-all fashion with no computation happening;
+    \item Barrier Synchronization: All processes wait for all others to complete computation and data exchange before proceeding with the new local computation.
+\end{itemize}
+\paragraph{structure}
+Local computations are performed by IPU tiles, which are composed of a processor and a local memory. Each processor has its control flow independent from all the others, allowing for MIMD parallelism. IPU processors also support Simultaneous Multi-Threading (SMT), which allows them to execute up to six parallel. The first generation of the IPU has 1,216 cores and is able to execute up to 7,296 parallel threads, while the second generation has 1,472 and is thus able to execute 8,832 parallel threads. One other noticeable feature of IPUs is the Accumulating Matrix Product (AMP) unit. This vectorized functional unit, built for matrix multiplication and convolutions, allows the performance of 16 fp32 or 64 fp16 operations per clock cycle.
+\paragraph{Memory}
+As expected by the BSP model, each tile can access only its local memory. For this reason, the IPU features no off-chip DRAM or cache systems but only dedicated scratchpad memory for each tile, which consists of 256 MB of SRAM in the GC2 and 624 KB in the GC200.
+
+The IPU Interconnect Architecture handles the data exchange of the communication phase, allowing all-to-all data sharing among tiles, both on-chip and off-chip. The IPU exchange handles the on-chip communications, while the off-chip communication, which allows multiple IPUs to work together in parallel, is handled by IPU Links. For both generations, the throughput is 62TB/s for the local memory, 7.8TB/s for inter-tile exchange, and 320GB/s for inter-chip exchange.
+\paragraph{Programmability}
+The IPU is programmed with the Poplar SDK. The program is defined by a computation graph in which computations are vertices, and data exchanges are static edges, while data is represented as tensors. The graph is translated into threads by the Poplar compiler, which follows the BSP model.
+
+ 
+\subsubsection{Groq Tensor Streaming Multiprocessor (TSP)}
+\begin{comment}
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.4\textwidth]{figs/Groq.png}
+    \caption{High-Level Diagram of Groq TSP.}
+\end{figure}
+\end{comment}
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.45\textwidth]{figs/Groq lane.png}
+    \caption{High-Level Diagram of a superlane.}
+\end{figure}
+\textbf{Groq Tensor streaming Multiprocessor (TSP)}, now rebranded as the Language Processing Unit (LPU), is a dataflow hardware accelerator for DNNs presented in 2019 by Groq. Groq is a startup founded in 2016 by a group of former Google engineers who worked on the TPU. As we will discuss in this section, there are some similarities between the TPU and the TSP (like the presence of the MXU), but the dataflow nature of the TSP makes them different in many aspects. This makes the TSP an intersection of the category of TPU-inspired architectures and the category of dataflow architectures.
+\paragraph{structure}
+Groq TSP \cite{Gwennap} is organized as a systolic array of heterogeneous functional units where data and instructions flow perpendicularly: data flows horizontally through lanes, and instructions flow vertically across lanes.
+
+Each lane supports 32 eastward and 32 westward streams, and during each clock cycle, each stream moves 32 bytes from one functional unit to the next. A set of 16 lanes is called a superlane, and each instruction is performed simultaneously on all the lanes of the superlane. In total, the TSP has 20 super lanes plus one extra inactive lane used for redundancy.
+Superlanes are groups of functional units that operate on streaming data of 16 lanes. In the middle of the superlane is the Vector Unit, and on each side is a Memory Unit, a Switch Unit, and a Matrix Unit. The two symmetrical groups of units are called the eastward and westward hemispheres.
+\begin{itemize}
+    \item \textbf{Vector Unit} The Vector Unit features 16 independent ALUs that take four streaming data operands. Besides standard operations, ALUs can also perform type conversion between integer and floating point and apply activation functions like ReLU, hyperbolic tangent, and reciprocal square roots.
+    \item \textbf{Memory Unit} The Memory Unit holds 44 slices of 128 kB of SRAM for a total of 5.5 MB and performs up to two reads and two writes per clock cycle. It is responsible for holding both instructions and activation data.
+    \item \textbf{Switch Unit} The Switch Unit performs reshaping operations on tensor data, such as transposing, shifting, and permutating.
+    \item \textbf{Matrix Unit} The Matrix Unit is similar to the MXU present in the TPU v1. There are 320 MAC units per lane, grouped into 20 16x16 supercells. Each MAC unit has two 8-bit registers and two 32-bit accumulator registers. Each clock cycle multiplies stored weight values by a pair of values from streaming data. The MAC unit is optimized for int8 operations, but it can also perform int16 and fp16 MACs with reduced throughput.
+\end{itemize}
+\paragraph{Scheduling}
+Instructions move vertically from one superlane to the next at each clock cycle while the data flows horizontally. TSP uses VLIW instructions composed of 144 operations, one per functional unit of the super lane. In its entirety, the TSP behaves like a VLIW processor that operates on 320-byte-long vectors of data with a pipeline that is 20 clock cycles deep.
+\paragraph{Determinism}
+An interesting aspect of Groq TSP is the complete absence of caches, DRAM controllers, and hardware speculation techniques, making the chip fully deterministic. This simplifies hardware design and allows the compiler to be aware of the availability of each piece of data to each functional unit at any time step. This enables the compiler to perform fine-grained optimizations on scheduling statically. Deterministic behavior and static scheduling also allow the behavior of the TSP to be precisely the same in each execution and even to be predicted at compile time without the need for execution.
+
+ 
+\subsubsection{Xilinx AI Engine}
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.35\textwidth]{figs/AIE Tile.png}
+    \caption{High-Level Diagram of the Versal platform.}
+\end{figure}
+Proposed in 2019, the Versal Platform\cite{Gaide2019} is a heterogeneous platform composed of three key components: scalar engines (CPU), adaptable engines (FPGA), and AI Engines. AI engines are an example of dataflow architecture built for DNN inference and are what make Xilinx Versal architectures relevant for our analysis. It is interesting to notice that, unlike all other dataflow architectures that startups have developed, AI Engines have been proposed by a well-established hardware company, namely Xilinx, which was founded in 1984 and, since 2022, is part of AMD.
+\paragraph{structure}
+The AI Engine (AIE) comprises a grid of interconnected AIE tiles. Each tile has a VLIW processor that features a scalar unit and vectorized (VLIW) functional units for integer and floating-point vector data types. At each clock cycle, an AIE tile can execute two scalar operations, two vector loads, one write operation, and one vectorized operation, achieving both instruction-level parallelism (ILP) and data parallelism (SIMD).
+\paragraph{Processors}
+Two generations of the AIE exist: the AIE and the AIE-ML. AIE tiles natively support 1024-bit, 8-bit, 16-bit, and 32-bit integers and 256-bit vectors of 32-bit floating points. To offer better DNN inference capabilities, AIE-ML tiles also support 1024-bit vectors of 4-bit integers and adopt bfloat16 values instead of 32-bit floating points, fitting twice as many values in the 256-bit vector. While the first generation offers some advantages over the second, like the support for 80-bit integer accumulators and 32-bit floating points, AIE-ML is superior in terms of MAC throughput as it performs 128 bfloat16 MACs per clock cycle instead of the 8 FPMACs of AIE.
+\paragraph{Memory}
+The memory of the AIE tiles consists of scalar and vector registers, 16 KB of instruction memory, and 32 KB of SRAM memory for data. AIE tiles can communicate with neighboring tiles via shared memory and distant tiles via AXI-stream communication. AIE-ML also features dedicated memory tiles to increase the on-chip memory, hosting 512 KB of SRAM memory, locks, and DMA controllers.
+\paragraph{Determinism}
+The use of static scheduling, the absence of caches, and the use of static interconnection graphs between tiles make the performance of the AI Engine fully deterministic and predictable at compile time.
+
+\section{LLM Inference Techniques}
+In this section, we discuss the main techniques that are used to optimize LLM inference both in single and multi-device scenarios. 
+\subsection{LLM inference as Autoregressive generation}
+
+\subsection{Batching Strategies}
+When running a server that performs LLM inference, one of the main challenges is to efficiently allocate different requests in the same batch. The most naive approach would be to execute the requests one at a time, but this would under-utilize GPU resources. In fact, when only a sequence is computed, GPU kernels execute matrix-vector multiplications, which are less efficient than matrix-matrix multiplications.
+
+One other naive approach would be to put the requests into a FIFO queue, identify the optimal batch size, and wait until enough requests are made before executing. This approach has two main issues. The first is that a request can remain pending for a long time if no other request arrives to fill the batch. The other is that the input sequence length is extremely variable, and that the number of output tokens is generally unpredictable. This is problematic because, in order to execute the requests in batch, the GPU needs to allocate $\text{batch size} \times \max(\text{input tokens}+\text{max output tokens})$, potentially wasting a substantial amount of memory. Another issue is that some sequences could terminate the generation sooner than others, but be forced to wait until the end of the whole batch before being sent to the user.
+
+Many improvements are possible over that naive approach, but one of the most promising is iteration-level scheduling or continuous batching, which consists of updating the batch after each iteration by removing completed requests and adding new ones from the FIFO queue.
+
+\subsection{PagedAttention}
+PagedAttention is an algorithm that constitutes the core of vLLM, one of the most popular LLM inference frameworks. The idea behind PagedAttention is that the KV cache can be efficiently managed in a similar way to the cache of an operating system. Instead of allocating enough cache to sustain the maximal KV cache size from the beginning, PagedAttention implements a system of virtual memory managed by a KV cache manager, who is responsible for mapping the virtual blocks of the KV cache to physical blocks. This allows for two major improvements. The first is that new physical blocks are allocated only when necessary, significantly reducing memory fragmentation. The second is that a physical page can be shared by multiple virtual pages. This is particularly useful when two sequences share a common prefix (typically the system prompt) or are identical up to a certain point (as it happens in beam search).
+
+\subsection{Parallelism Techniques}
+When it comes to distributing LLM inference across multiple devices, four main strategies are possible:
+\begin{itemize}
+    \item \textbf{Data parallelism}, which consists of having a copy of the model on each device and evenly spreading the batches across them. So if a system has four GPUs that individually perform best at a batch size of 8, the system could process $4 \times 8 = 64$ sequences at the same time by having an instance of the model on each of the GPUs. This approach is conceptually simple but suffers from two issues. The first is that a lot of the memory is used to have replicated copies of the model, while it could be used to store more KV cache, allowing a large batch size. The second is that it is applicable only in scenarios where the model fits in a single GPU.
+    \item \textbf{Tensor Parallelism}, which consists of splitting the model weights horizontally across devices. This means that all the GPUs compute all the layers of the model but store only a portion of the weights, and then communicate with others to share the results.
+    \item \textbf{Pipeline parallelism}, which consists of splitting the model weight vertically across devices. This means that every GPU computes only some layers of the network and stores only the weights relative to those layers. When the computation is finished, each device moves its results to the new one.
+    \item \textbf{Expert parallelism}, which consists of assigning a subset of experts to each GPU and routing requests to their corresponding expert. Unlike the other techniques, this is applicable only to Misture-of-Experts models.
+\end{itemize}
+To achieve optimal scaling, those techniques can be combined. Sometimes the combination of Data, Tensor, and Pipeline Parallelism is referred to as 3D parallelism.
+
+The strategy employed by vLLM consists of using Tensor parallelism on the GPUs in the same node and Pipeline parallelism across nodes.
+
+
+\section{Related Work}
+This section presents the most relevant benchmarks used for evaluating the performance and power consumption of machine-learning workloads. 
+
+\subsection{MLPerf}
+
+\textbf{MLPerf} is the most diffused benchmark for measuring the performance of systems on Machine Learning Workloads. It was created in 2018 by MLCommons organization, a consortium co-founded by industry leaders and academic institutions, to provide a standardized and open benchmark. At the moment, the benchmark consists of three parts:  
+\begin{itemize}  
+    \item \textbf{MLPerf Inference}\cite{reddi2020mlperf}: Evaluates the performance of systems when running pre-trained machine learning models. It focuses on tasks such as image classification, object detection, natural language processing, recommendation systems, and measuring latency and throughput in different deployment scenarios like edge, mobile, and data center.  
+    \item \textbf{MLPerf Training}\cite{mattson2020mlperf}: Measures the time required for a system to train models to a target accuracy on various machine learning workloads. The trained models are the same as those used in the Inference benchmark.
+    \item \textbf{MLPerf Tiny}\cite{banbury2021mlperf}: Designed for resource-constrained environments, this benchmark evaluates the performance of machine learning models on low-power devices such as microcontrollers and IoT hardware.  
+    \item \textbf{MLPerf Power}\cite{Tschand2024}: Provides a set of guidelines and tools to measure the power consumption of other MLPerf Benchmarks on a diverse set of hardware.
+\end{itemize}
+
+Since this thesis focuses on the inference performance and consumption of AI accelerators, the Inference\cite{reddi2020mlperf} and Power\cite{Tschand2024} benchmarks are discussed in more detail to highlight their key principles. 
+
+\subsubsection{MLPerf Inference}
+While MLPerf Training\cite{mattson2020mlperf} focuses only on accuracy and time-to-train (latency), measuring inference\cite{reddi2020mlperf} requires a more complex analysis. 
+To simulate real-world scenarios, the benchmarks introduce four different load generators that represent different scenarios:
+\begin{itemize}
+\item \textbf{Single-stream}: a single stream of requests with batch size one.
+\item \textbf{Multi-stream}: a single stream of requests with a fixed arrival pattern and batch size greater than one.
+\item \textbf{Server}: multiple streams with a batch size of one and random arrival pattern.
+\item \textbf{Offline}: batch processing application with data always available and no latency constraint.
+\end{itemize}
+
+The benchmark ensures that each implementation meets the quality target (usually 99\% of the reference model) and considers several
+performance metrics, namely latency, latency-bounded throughput, throughput, and maximum number of inferences per query. Latency-bounded throughput is particularly interesting as it takes into account the trade-off between latency and throughput. In fact, throughput typically benefits from large batch sizes, but end users are typically interested in the latency of their requests. This causes servers not to be able to wait to reach the optimal batch size before starting to process the requests.
+
+For what concerns language models, the Language section of MLPerf Inference comprises five models (BERT-Large, GPT-J, Llama2-70B, LLama3-405B, Mixtral-8x7B) ranging from 340M to 405B parameters and including both dense and Misture-of-Expert models.
+
+\subsubsection{MLPerf Power}
+In 2024, MLCommons introduced \textbf{MLPerf Power} \cite{Tschand2024}, which presents a set of guidelines to measure the energy efficiency of ML systems. The authors emphasize that the \textbf{Thermal Design Power (TDP) and Power Supply Unit (PSU) rating do not accurately reflect the actual power consumption} of the system as they include significant margins over actual consumption and do not account for oscillations in power demand, providing an incomplete picture of the system's power usage. For this reason, it is necessary to perform precise and holistic measurements of power consumption in order to get a valuable power analysis of AI hardware.
+
+For what concerns the software, MLPerf Power leverages previous MLPerf benchmarks (Training, Inference, and Tiny). It then divides hardware into four categories: Datacenter, Edge, Mobile, and Tiny. It then provides a set of good practices and principles to perform power measurements for every type of hardware given an appropriate benchmark (Training and Inference for Datacenter, Inference for Edge and Mobile, and Tiny for Tiny hardware).
+
+The paper underscores the importance of \textbf{measuring power consumption at the system level rather than solely focusing on the power consumption of ML hardware}. This is because ML computation is typically divided into multiple duty cycles, each utilizing different system resources such as memory, network, and processing units. Focusing solely on accelerator power neglects the dynamic interplay between various system components, leading to an incomplete understanding of the system's overall power consumption.
+However, measuring the power consumption of the entire system can be challenging due to the limitations of current measurement methods. Power measurements are often made at the level of the Power Distribution Unit (PDU), which may serve multiple nodes, making it difficult to isolate the power consumption of individual components. Additionally, cooling is a shared resource that can be difficult to account for in evaluations, further complicating the measurement process.
+To achieve accurate power measurements, dedicated tools may be necessary, which can limit the ability to produce power measurements that comply with the MLPerf Power Benchmark.
+
+\subsection{Previous work at Argonne National Laboratory}
+In 2022, a study published by Argonne National Laboratory \cite{Emani2021} compared novel AI accelerators, including SambaNova SN10-8R, Cerebras CS-2, Graphcore IPU M-2000, and GroqNode, with the NVIDIA A100 GPU. The workloads used for the comparison included deep learning (DL) primitives, benchmark models from MLPerf (ResNet, U-Net, and BERT), and scientific machine learning applications. This initial study evaluated execution time and computational performance metrics but did not account for power consumption as a factor in the analysis.
+More recent works from Argonne, such as \cite{Emani2022}, \cite{Emani2024}, and \cite{LLMInfbench}, have extended these comparisons, with a particular interest In Large Language Models (LLM) inference. 
+
+\subsubsection{LLM-Inference Bench}
+Published in 2024, the \textbf{LLM Inference Bench} \cite{LLMInfbench} provides an extensive evaluation of various aspects of LLM inference. The benchmark considers several key factors, including:
+\begin{itemize}
+\item \textbf{LLM architectures}: The paper benchmarks a range of open-source LLM models from the \textbf{LLama, Mistral, and Qwen} families, encompassing both dense and mixture-of-experts models. Specifically, the comparison focuses on models with 7 billion parameters (LLaMA-2-7B, LLaMA-3-8B, Mistral-7B, Qwen-2-7B) and 70 billion parameters (LLaMA-2-70B, LLaMA-3-70B, Mixtral-8x7B, Qwen-2-72B).
+\item \textbf{LLM token generation parameters}: The benchmark evaluates the impact of various input sizes, output sizes (also referred to as max new tokens), and batch sizes on LLM inference performance.
+\item \textbf{Hardware platforms}: The comparison includes both \textbf{GPU systems} (NVIDIA A100, NVIDIA H100, NVIDIA GH200, AMD MI300X, AMD MI250 GPUs) and \textbf{AI accelerators} (SambaNova SN40L, and Habana Gaudi2).
+\item \textbf{Inference frameworks}: The benchmark assesses the performance of various inference frameworks, including vLLM, DeepSpeedMII, llama.cpp, and architecture-specific frameworks like TRT-LLM and SambaFlow.
+\item \textbf{Optimizations}: The evaluation also considers the effects of different optimizations, such as KV caching and quantization, on LLM inference performance.
+\end{itemize}
+
+The benchmark employs a set of metrics to compare the performance of different software and hardware configurations, considering latency, throughput, and power consumption. The metrics used are:
+\begin{itemize}
+\item \textbf{Perplexity}: The exponent of the model's loss, where lower perplexity indicates better results.
+\item \textbf{Time to first token (TTFT)}: The latency of producing the first output token.
+\item \textbf{Iter-token Latency (ITL)}: The average time interval between generating two consecutive tokens.
+\item \textbf{Throughput}: The total number of tokens (input + output × batch size) processed per unit of latency.
+\item \textbf{Average Power}, which enables the calculation of \textbf{performance per watt} as throughput over average power.
+\end{itemize}
+
+Notably, the LLM-Inference Bench employs distinct performance metrics compared to MLPerf Inference. Unlike MLPerf, which evaluates latency and throughput at the task level (e.g., sentence translation), LLM-Inference Bench takes a more granular approach, assessing individual token-level performance. Additionally, LLM-Inference Bench simplifies the evaluation setup by using a single stream with variable batch sizes, deviating from the four-scenario framework used in MLPerf.
+
+\section{Methodology}
+\subsection{Frameworks}
+This paper evaluates different hardware platforms using a variety of models.
+There are multiple inference frameworks to choose from for LLM inference, including both platform-specific (TensorRT-LLM \cite{}, ) and cross-platform ones (Ollama, ORCA, vLLM, DeepSpeed-Inference). 
+
+For the evaluation, VLLM is chosen wherever supported (Nvidia, Intel, AMD GPUs, Google TPUs, and Habana Gaudi). This choice is motivated by three main reasons:
+\begin{itemize}
+    \item It is the most widely supported optimized framework for LLM inference as it supports Nvidia, Intel, AMD GPUs, Google TPUs, and Habana Gaudi.
+    \item Thanks to the PagedAttention algorithm, vLLM guarantees a significantly more efficient use of the shared memory compared to Huggingface Transformers.
+    \item It automatically manages multi-GPU inference exploiting tensor-parallelism across GPUs in the same node and pipeline parallelism across different nodes.
+    \item It provides Docker images in its GitHub repository that simplify installation and result reproducibility.
+\end{itemize}
+
+On AI accelerators besides Habana Gaudi, each one has its own inference framework as the only available option. In those scenarios, the hardware-specific framework is used.
+
+\subsection{Models}
+Regarding the models, this benchmark takes inspiration from LLM-Inference-Benchmark\cite{LLMInfbench}, which featured 7B and 70B models from the Llama 2 and 3, Mistral, and Qwen 2.5 families.
+In contrast to LLM-Inference Bench, this benchmark also includes models with 14B and 32B parameters, providing a better understanding of the relationship between model size and performance.
+On top of that, models from the \textbf{DeepSeekR1-Distill} and\textbf{ Qwen QWQ} families are added to compare them with their base counterparts. Table \ref{tab:model_specs} provides the whole list of models.
+
+\begin{table}[t]
+\centering
+\begin{tabular}{|l|c|c|}
+\hline
+\textbf{Model Name} & \textbf{Parameters} & \textbf{Attention (Q/KV)}\\
+\hline
+DeepSeek-R1-Distill-Llama-8B & 8B & 32 / 8\\
+Meta-Llama-3-8B & 8B & 32 / 8  \\
+DeepSeek-R1-Distill-Qwen-7B & 7B & 28 / 4 \\
+Llama-2-7b-hf & 7B & 32 / 32  \\
+Qwen2-7B & 7.61B & 28 / 4  \\
+Mixtral-8x7B-v0.1 & 46.7B & 32 / 8  \\
+Mistral-7B-v0.1 & 7.3B & 32 / 8  \\
+Qwen2.5-14B-Instruct & 14.7B & 40 / 8 \\
+QwQ-32B & 32.5B & 40 / 8  \\
+Qwen2.5-32B & 32.5B & 40 / 8 \\
+DeepSeek-R1-Distill-Qwen-32B & 32B & 40 / 8 \\
+DeepSeek-R1-Distill-Llama-70B & 70B & 64 / 8  \\
+DeepSeek-R1-Distill-Qwen-14B & 14B & 40 / 8  \\
+Llama-2-13b-hf & 13B & 40 / 40 \\
+Meta-Llama-3-70B & 70B & 64 / 8  \\
+Qwen2-72B & 72B & 64 / 8  \\
+Llama-2-70b-hf & 70B & 64 / 8 \\
+\hline
+\end{tabular}
+\caption{Model Specifications: Parameters and Attention Heads. Models that support Grouped Query Attention (GQA) share a single KV head among multiple Q heads.}
+\label{tab:model_specs}
+\end{table}
+
+\section{Results}
+In this section, experimental results are analyzed to answer specific research questions. Each sub-section corresponds to a specific research question and provides the particular methodology of the experiments run and an analysis of the results.
+
+\subsection{Computational Complexity of LLM Inference}
+Large language models are based on the Transformer architecture, a Recurrent Neural Network, featuring multiple self-attention layers.
+The time complexity of LLM inference is linear in the number of layers, and the time complexity of each layer corresponds to the time complexity of the self-attention, which is explained in this section.
+Given a sequence of embeddings of length $n$ and a model hidden dimension $d$, the input $X$ of the Attention Head is $(n,d)$. To obtain the Key ($K$), Query ($Q$), and Value ($V$) Matrices (all of size $(n,d)$), the attention head multiplies $X$ by three matrices of size $(d,d)$. The overall complexity of this operation is $O(nd^2)$. Then, attention head computes $Attention(Q,K,V)=\text{softmax}(\frac{QK^⊤}{\sqrt{d_k}})V$. Both mutliplying $QK^T$ and $\text{softmax}(\frac{QK^⊤}{\sqrt d_k})V$ have complexity $O(n^2d)$. So, the attention head has an overall $O(n^2d+nd^2)$ complexity, which makes it quadratic in input length. But when the hidden size $d$ is much larger than $n$, the complexity might appear linear because the $O(d^2n)$ dominates the overall complexity.
+A widely adopted technique called KV caching consists of caching the previous values of $K$ and $V$, so that the generation of $K$ and $V$
+
+Given the recursive nature of the LLM, the complexity of a whole sequence generation is equal to the sum of the complexities of the generation of all the subsequences. So the complexity of generating or processing a string of $n$ tokens is quadratic in $n$: $\sum_{i=0}^nO(nd)=O(n^2d)$.
+
+\subsection{Performance Metrics}
+In this subsection, we analyze the results of the synthetic data benchmark on a single machine to gain insights into the impact of the inference parameters on the performance.
+
+As a baseline machine, we use a Node of Polaris at ALCF, which features an AMD Milan CPU and four 40GB HBM Nvidia A100s (SXM4). The framework used is vLLM, and the precision is set to bfloat16 to work best with the Tensor Cores of the Nvidia A100, while maintaining numerical stability.
+
+\textbf{TTFT} (time to first token) is defined as the time necessary to produce the first token (or batch of tokens if batch size > 1).
+
+As demonstrated by Figure \ref{fig:ttft}, TTFT  scales linearly with the length of the request, despite the theoretical result that suggests a quadratic scaling of TTFT over input length. 
+The slope of the line depends on the batch size and the tensor parallelism adopted. A larger batch size causes TTFT to increase, while a larger tensor parallelism parameter (number of GPUs used) improves it. In a scenario of perfect scaling, we could expect the TTFT to correspond to $TTFT_n = \frac{TTFT_1}{n}$. Still, due to chip-to-chip communication and other inefficiencies, the actual TTFT is scaled by a constant called efficiency that can be computed as $\text{efficiency}_n = \frac{TTFT_1}{TTFT_n \times n}$. In the example of Figure \ref{fig:ttft}, the average efficiency of TTFT for Llama 3 8B is 0.68 for 2 GPUs and 0.47 for 4 GPUs.
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.5\textwidth]{figs/llama8B_ttft.pdf}
+    \caption{TTFT for Llama 3 8B on Polaris.}
+    \label{fig:ttft}
+\end{figure}
+
+\textbf{Latency} is defined as the time necessary to generate the whole batch of sequences.
+Similarly to TTFT, latency appears to scale linearly with the input and the output size, and its slope is decreased by a larger tensor parallelism and increased by a larger batch size. But in this case, we observe that, especially for larger batch sizes, the quadratic complexity of the problem appears evident. 
+Latency generally has higher efficiency ($\text{efficiency}_n = \frac{\text{latency}_1}{\text{latency}_n \times n}$). In this case, it is on average 0.74 for 2 GPUs and 0.53 for 4 GPUs.
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.5\textwidth]{figs/llama8B_latency.pdf}
+    \caption{Latency for Llama 3 8B on Polaris.}
+    \label{fig:latency}
+\end{figure}
+
+\textbf{Throughput} measures the number of tokens processed per second by the system. Typically, throughput is used to indicate the number of output tokens generated over time $\text{throughput} = \frac{tok_{out} \times b}{t}$. Sometimes the term throughput is also used to indicate the total number of tokens processed per second $\text{throughput} = \frac{(tok_{in} + tok_{out}) \times b}{t}$. For clarity, the first will be referred to as output throughput, and the second as input-output throughput.
+
+Figure \ref{fig:tp} illustrates how the throughput varies by changing sequence length and batch size. Consistently with what shown in Figure \ref{fig:lat}, for smaller batch sizes the throughput is almost constant, while for larger ones it tends to decrease as sequence length increases. This decrease never causes the larger batch sizes to perform worse than the smaller ones, making it always better to have a larger one if the memory constraint allows it.
+Like we have seen for latency and TTFT, tensor parallelism also allows to consitently achieve better throughput.
+
+While tensor parallelism improves all the performance metrics, batch size trades off latency for throughput. So, in a scenario with no latency constraints (like offline inference), it is convenient to use the largest possible batch size as long as the KV cache fits the GPU memory. While in a scenario where latency is also important, it might be necessary to trade off some throughput to guarantee lower latency to the users. 
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.5\textwidth]{figs/llama8B_tp.pdf}
+    \caption{Throughput for Llama 3 8B on Polaris.}
+    \label{fig:tp}
+\end{figure}
+
+Finally, it is important to consider the amount of power that the system consumes to achieve the desired performance. We have seen that increasing the tensor parallelism size also improves all the performance indexes, but it will also increase power consumption. To a first approximation, we could say that adding GPUs to the system linearly increases the consumption.
+A deeper analysis shows that systems with more active GPUs typically achieve lower average power utilization in percentage of TDP. Keeping the example of Llama 3 8B, at input and output size 2048 and batch size 64, one GPU uses on average 84\% of the TDP, two use 0.69\%, and four use 0.585\%.
+
+Two possible ways to account for power consumption in performance evaluation are \textbf{Throughput per Watt}, which tells how many tokens are being processed per Watt of energy used and \textbf{Energy per Token}, which tells how many Joules of energy are necessary to process a batch of request containing that amount of tokens.
+
+Figure \ref{fig:tp_per_watt} shows the throughput normalized by average power across different input-output sizes and batch sizes. As we observed for throughput, larger batch sizes are also preferrable for optimizing performance per Watt. But, unlike we have seen before, having a larger tensor parallel size is not convenient in this case. In fact the scenario with a single GPU is slightly better than the one with two and four GPUs.
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.5\textwidth]{figs/llama8B_tp_watt.pdf}
+    \caption{Throughput per Watt for Llama 3 8B on Polaris.}
+    \label{fig:tp_per_watt}
+\end{figure}
+
+It is also worth noticing that, even if using a single GPU is better in terms of performance per Watt, the improvement is very subtle and, if we account for the power wasted by having the other cards idle, higher tensor parallelism returns to be convenient over single-GPU inference.
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.45\textwidth]{figs/llama8_tp_watt3.pdf}
+    \caption{Throughput per Watt for Llama 3 8B on Polaris.}
+    \label{fig:tp_per_watt_idle}
+\end{figure}
+
+\begin{comment}
+\subsection{Performance comparison Accelerators}
+As stated in the Frameworks section of the Methodology, all the GPUs are tested with the same inference framework, namely vLLM, which provides near-optimal memory utilization and a standardized scale-out mechanism. Concerning the model, Llama-3-8B is chosen as an example.
+The comparison considers two GPU cards, the Nvidia A100 40GB (PCI-E and SXM versions) and the Intel PVC 1550 Max. Those architectures are described in detail in their dedicated sections \ref{},\ref{}.
+
+\subsubsection{SXM vs PCIe A100}
+The Nvidia A100 40GB comes in two formats: the SXM and the PCIe. The SXM A100 offers better NVlink scalability and is sold in clusters of up to 16 cards, while the A100 supports NVlink only through an NVLink Bridge. In this section, we try to understand which one is better for inference in terms of performance and power consumption for LLM inference.
+
+ For the test, I used the Sami Server at UIC, which features 2x 40GB A100 PCIe with no NVLink, and a Polaris node, which features 4x NVLINK connected SXM A100s. Nvidia declares identical flops and memory bandwidth performance for the two cards, but the SXM card has a much higher TDP (400W compared to 250W).
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=0.8\linewidth]{figs/tp_a100s.png}
+    \caption{Throughput in Polaris and Sami (512 input and 512 output tokens) for different batch sizes}
+    
+    \includegraphics[width=0.8\linewidth]{figs/tp_watt_a100s.png}
+    \caption{Throughput over average power in Polaris and Sami (512 input and 512 output tokens) for different batch sizes}
+\end{figure}
+
+This experiment clearly shows that a trade-off exists between raw performance and performance per watt.
+Regarding the performance of single A100 cards, the SXM A100 delivers higher throughput than the PCIe version (+15\% at batch size 8) but at the cost of having a much higher TDP (400W vs 250W). This makes the PCIe A100 the best card in terms of performance per watt. However, the PCIe A100 does not scale well to multi-GPU inference as the SXM does. In fact, two PCIe A100s without NVLink connection perform in an almost identical manner to a single one when using tensor parallelism. Instead, Polaris, which has 4 NVLInk connected A100s, scales well to two or even four GPUs thanks to the high-speed interconnectivity, achieving the best overall performance (653.3 tokens/second at batch size 8). But this performance comes at the cost of having a TDP of 1600W only for GPU cards. This increase in consumption is not compensated by an equal increase in performance, leading to a loss in performance per watt of up to a third (1.2 tokens/J against 0.9 tokens/9 at batch size 8).
+
+\subsubsection{Idle GPUs}
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=0.8\linewidth]{figs/power_polaris.png}
+    \caption{Power consumption in Polaris (512 input and 512 output tokens) for different batch sizes}
+    
+    \includegraphics[width=0.8\linewidth]{figs/tp_polaris.png}
+    \caption{Throughput in Polaris (512 input and 512 output tokens) for different batch sizes}
+    
+    \includegraphics[width=0.8\linewidth]{figs/tp_over_watt_polaris.png}
+    \caption{Throughput over average power in Polaris (512 input and 512 output tokens) for different batch sizes}
+\end{figure}
+
+When performing LLM inference in a system with multiple GPUs, like a Polaris node which features 4x SXM A100s, it is possible to allocate all the GPUs to the inference task, or to use just a subset of them and leave the others idle. As confirmed by the data, it generally holds that using multiple GPUs improves the throughput and increases average power.  Idle GPUs still consume power (approximately 50Ws in this case) and do not contribute to the task, so we can expect the performance per watt to substantially decrease if we account for the power consumed by idle cards. This raises the question if it would be more energy efficient to consume more power for less time, be exploiting the increase throughput of multiple GPUs or if it would be better to just leave some GPUs idle.
+
+As the plots shows, in this configuration (512 input tokens and 512 output tokens with Llama-3-8B on 4 SXM A100) it is always more efficient to use GPUs rather than leave them idle. Other experiments prove that this result is consistent across models and input-output lenghts.
+
+\subsubsection{PVC vs A100}
+The Intel Ponte Vecchio (PVC) line (also known as Intel Xe) is one of Nvidia's biggest competitors for what concerns AI-oriented GPUs. In this section, we compare the Intel Max 1550 GPU with the Nvidia A100 to understand which one is better in terms of performance and consumption for LLM inference.
+
+The PVC card offers significantly more memory than the A100 (128GB against 40GB) and more than 2-fold faster HBMs (3277 vs 1555 GB/s). The PVC card also features a multi-die design, as it features two GPU tiles per card. This is a key difference from a programmer standpoint because to use a single PVC card to its full potential is necessary to employ parallel techniques such as tensor parallelism, which are typical of multi-GPU settings. The PVC also has a much higher TDP (600W, which is 50\% higher than the SXM A100 and 2.4x than the PCIe A100).
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=0.8\linewidth]{figs/tp_A100.png}
+    \caption{Throughput of A100 (PCIe 40GB)}
+    
+    \includegraphics[width=1.0\linewidth]{figs/tp_PVC.png}
+    \caption{Throughput of PVC (Intel Max 1550)}
+
+    \includegraphics[width=0.8\linewidth]{figs/perf_watt_a100_pvc.png}
+    \caption{Comparison of Throughput per Watt (512 input tokens and 512 output tokens) across batch sizes}
+\end{figure}
+
+With Llama-3-8B the Intel PVC GPU delivers noticeably slower performances compared to the Nvidia A100 both in single-tile and Multi-Tile scenarios. This slow-down is not compensated by a lower power consumption, which is t higher in the PVC.
+This proves that the Intel PVC is not an optimal choice for LLM inference for models with less than 10B parameters that do not take advantage of the larger VRAM.
+
+\begin{itemize}
+\item How do Nvidia and Intel GPUs compare in terms of Perf/watt (missing on LLM inf bench)
+\item How do different GPU counts affect performance? If willing to accept lower throughput, is it cheaper to keep some GPUs idle?
+\item How do vLLM and Accelerate compare in terms of Perf/watt?
+\item How much energy is saved by using DeepSeek distilled models?
+\end{itemize}
+\end{comment}
+
+\bibliographystyle{IEEEtran}
+\bibliography{references}
+\end{document}

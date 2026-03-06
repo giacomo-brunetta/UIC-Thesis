@@ -1,0 +1,89 @@
+\subsection{LLM Models}
+\label{chap:methods:sec:models}
+
+In our performance and energy efficiency evaluation, we employ fourteen open-source large language models from the Llama\cite{grattafiori2024llama,meta2025llama4}, Qwen\cite{yang2024qwen2,yang2025qwen3}, Mistral\cite{jiang2024mistral}, and DeepSeek R1\cite{guo2025deepseek} families.
+The architectural features of those models are summarized in \ref{tab:models}.
+\begin{comment}
+\begin{table}[h!]
+\centering
+\small
+\caption{LLMs used in this study: fourteen models and their features.}
+\label{tab:models}
+\begin{tabular}{|l|cc|cclc|}
+\hline
+\textbf{Model Name} & \multicolumn{2}{c|}{\textbf{Parameters}} & \textbf{Layers} & \textbf{Attention} & \textbf{FFN Type} & \textbf{Context} \\
+ & \textbf{Total} & \textbf{Active} & & & & \\
+\hline
+\textbf{Llama 3.1 8B} & 8B & = & 32 & GQA (32/8) & Dense & 128K \\
+\textbf{Llama 3.3 70B} & 70B & = & 80 & GQA (64/8) & Dense & 128K \\
+\textbf{Nemotron Super 49B} & 49B & = & 80 & GQA (64/8) & Dense & 128K \\
+\textbf{Llama 4 Scout 17B 16E} & 109B & 17B & 48 & GQA (40/8) & MoE (16E) & 10M \\
+\hline
+\textbf{Qwen3 8B} & 8.2B & = & 36 & GQA (32/8) & Dense & 128K \\
+\textbf{Qwen3 14B } & 14.8B & = & 40 & GQA (40/8) & Dense & 128K \\
+\textbf{Qwen3 32B } & 32.8B & = & 64 & GQA (64/8) & Dense & 128K \\
+\textbf{Qwen2.5 72B } & 72B & = & 80 & GQA (64/8) & Dense & 128K \\
+\textbf{Qwen3 235B A22B} & 235B & 22B & 94 & GQA (64/8) & MoE (128E) & 128K \\
+\hline
+\textbf{Ministral 8B } & 8B & = & 36 & GQA (32/8) & Dense & 128K \\
+\textbf{Mistral Small 3.1 24B} & 24B & = & 40 & GQA (32/8) & Dense & 128K \\
+\textbf{Mixtral 8$\times$7B} & 47B & 13B & 32 & GQA (32/8) & MoE (8E) & 32K \\
+\textbf{Mixtral 8$\times$22B} & 141B & 39B & 56 & GQA (32/8) & MoE (8E) & 32K \\
+\hline
+\textbf{DeepSeeK R1 } & 671B & 37B & 61 & MLA & MoE (257E) & 23K \\
+\hline
+\end{tabular}
+\end{table}
+\end{comment}
+\begin{table}[h!]
+\centering
+\footnotesize
+\caption{LLMs used in this study: fourteen models and their architectural features.}
+\label{tab:models}
+
+\begin{tabularx}{\textwidth}{l c c c c c c}
+\toprule
+\textbf{Model Name} & \textbf{Parameters} & \textbf{Active} & 
+\textbf{Layers} & \textbf{Attention} & \textbf{FFN Type} & \textbf{Context} \\
+
+\midrule
+
+\textbf{Llama 3.1 8B}           & 8B   & =   & 32 & GQA (32/8) & Dense        & 128K \\
+\textbf{Llama 3.3 70B}          & 70B  & =   & 80 & GQA (64/8) & Dense        & 128K \\
+\textbf{Nemotron Super 49B}     & 49B  & =   & 80 & GQA (64/8) & Dense        & 128K \\
+\textbf{Llama 4 Scout 17B 16E}  & 109B & 17B  & 48 & GQA (40/8) & MoE (16E)    & 10M \\
+
+\midrule
+
+\textbf{Qwen3 8B}               & 8.2B & =   & 36 & GQA (32/8) & Dense        & 128K \\
+\textbf{Qwen3 14B}              & 14.8B& =   & 40 & GQA (40/8) & Dense        & 128K \\
+\textbf{Qwen3 32B}              & 32.8B& =   & 64 & GQA (64/8) & Dense        & 128K \\
+\textbf{Qwen2.5 72B}            & 72B  & =   & 80 & GQA (64/8) & Dense        & 128K \\
+\textbf{Qwen3 235B A22B}        & 235B & 22B  & 94 & GQA (64/8) & MoE (128E)   & 128K \\
+
+\midrule
+
+\textbf{Ministral 8B}           & 8B   & =   & 36 & GQA (32/8) & Dense        & 128K \\
+\textbf{Mistral Small 3.1 24B}  & 24B  & =   & 40 & GQA (32/8) & Dense        & 128K \\
+\textbf{Mixtral 8$\times$7B}    & 47B  & 13B  & 32 & GQA (32/8) & MoE (8E)     & 32K \\
+\textbf{Mixtral 8$\times$22B}   & 141B & 39B  & 56 & GQA (32/8) & MoE (8E)     & 32K \\
+
+\midrule
+
+\textbf{DeepSeek R1}            & 671B & 37B  & 61 & MLA        & MoE (257E)   & 128K \\
+
+\bottomrule
+\end{tabularx}
+\end{table}
+
+To analyze the impact of both size and sparsity, we use models with parameters ranging from 8B to 670B, including both dense and Mixture-of-Expert (MoE) models.
+
+\begin{comment}
+\textbf{Llama 3}\cite{grattafiori2024llama} is a multilingual family of text-only models released in 2024 by Meta AI featuring models from 1B to 405B parameters. Unlike the previous generation of Llama 2 models \cite{touvron2023llama}, Llama 3 features Groped Query Attention across the whole range of model sizes. We chose to test the latest instruction fine-tuned versions of the 8B and 70B models. We also tested Llama  Nemotron Super 49B \cite{bercovich2025llama}, a pruned and thinking fine-tuned version of Llama 3 70B. \textbf{Llama 4}\cite{meta2025llama4} is the next generation of Llama models. Llama4 models are natively multimodal Mixture-of-Experts models released in early 2025 by Meta AI. The Llama 4 family comprises Scout (109 B total parameters, 17 B active), Maverick (400 B total, 17 B active), and Behemoth (2 T total, 288 B active), which together introduce unified text, image, and video understanding alongside unprecedented long context processing compared to prior Llama generations. We chose to test Llama 4 Scout.
+
+\textbf{Qwen 3}\cite{yang2025qwen3} is a comprehensive family of open-weight dense and Mixture-of-Experts large language models released in April 2025 by Alibaba. Dense models go from 0.6 B to 32 B parameters, while Mixture-of-experts range from 30B with 3B active to the flagship 235B with 22B active. Qwen3 introduces hybrid reasoning capabilities, native long-context processing up to 1 M tokens, and specialized optimizations for coding, mathematical problem solving, and agentic workflows. In the absence of a 70B model in the Qwen3 family, we also tested Qwen2 72B, which belongs to the previous family of Qwen models.
+
+\textbf{Mistral}\cite{jiang2024mistral} is a family of open-weight language models from Mistral AI comprising both dense and Mixture of Experts models. Mixtral 8×7B\cite{jiang2024mixtral} (47 B total parameters, 13 B active per token; 32 K-token context; released December 2023) was one of the first examples of Mixture of Expert LLMs. We chose to test two dense models (Ministral 8B and Mistral Small 24B) and two Mixture of Experts ones (Mixtral 7x8B and 22x8B).
+
+\textbf{DeepSeek R1}\cite{guo2025deepseek} is an open-weight reasoning model family released in January 2025 by DeepSeek AI. It comprises the base DeepSeek R1 Model (670B total, 37B active) and six distilled dense variants (1.5 B–70 B) based on Llama and Qwen architectures. We test only R1 as the other models are computationally identical to their original counterparts. The base model features some unique architectural features, including 256 routed and one shared expert and KV cache compression (latent attention) .
+\end{comment}
