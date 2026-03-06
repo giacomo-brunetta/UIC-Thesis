@@ -15,7 +15,7 @@ This data allows us to observe different trends of multi-GPU inference, includin
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.9\columnwidth]{figs/heatmap Throughput (toks)_vs_Energy Efficiency (tokJ)_bfloat16.pdf}
+    \includegraphics[width=0.9\columnwidth]{figs/heatmap Throughput (toks)_vs_Energy Efficiency (tokJ)_bfloat16.png}
     \caption{Throughput and energy efficiency heatmap across three multi-GPU nodes (bfloat16).}
     \tagpdfsetup{alttext={Throughput and energy efficiency heatmap across three multi-GPU nodes (bfloat16).}}
     \label{fig:heatmapbf16}
@@ -23,7 +23,7 @@ This data allows us to observe different trends of multi-GPU inference, includin
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.9\columnwidth]{figs/heatmap Throughput (toks)_vs_Energy Efficiency (tokJ)_fp8.pdf}
+    \includegraphics[width=0.9\columnwidth]{figs/heatmap Throughput (toks)_vs_Energy Efficiency (tokJ)_fp8.png}
       \caption{Throughput and energy efficiency heatmap across three multi-GPU nodes (FP8).}
       \tagpdfsetup{alttext={Throughput and energy efficiency heatmap across three multi-GPU nodes (FP8).}}
     \label{fig:heatmapfp8}
@@ -36,7 +36,7 @@ Resource allocation in multi-GPU LLM inference requires balancing memory capacit
 \begin{comment}
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.9\columnwidth]{figs/efficiency_lineplot_Throughput per Instance_bfloat16.pdf}
+    \includegraphics[width=0.9\columnwidth]{figs/efficiency_lineplot_Throughput per Instance_bfloat16.png}
       \caption{Throughput gain with Tensor Parallelism.}
     \label{fig:tpbars}
 \end{figure}
@@ -54,7 +54,7 @@ It is also noteworthy that Tensor Parallel configurations generally draw less po
 
 \begin{figure}[h!]
     \centering
-    \includegraphics[width=0.95\columnwidth]{figs/efficiency_boxplot_merged_active_power_avg_bfloat16_fp8.pdf}
+    \includegraphics[width=0.95\columnwidth]{figs/efficiency_boxplot_merged_active_power_avg_bfloat16_fp8.png}
     \caption{Power consumption with Tensor Parallelism.}
     \tagpdfsetup{alttext={Power consumption with Tensor Parallelism.}}
     \label{fig:powbars}
@@ -75,7 +75,7 @@ However, due to the impact of memory accesses, these gains are not strictly prop
 
 \begin{figure}[h!]
     \centering
-    \includegraphics[width=\columnwidth]{figs/Combined_Metrics_NoBest.pdf}
+    \includegraphics[width=\columnwidth]{figs/Combined_Metrics_NoBest.png}
       \caption{Scaling of performance metrics with model size.}
       \tagpdfsetup{alttext={Scaling of performance metrics with model size.}}
     \label{fig:scaling}
@@ -87,7 +87,7 @@ To evaluate its performance, we conduct a series of experiments comparing Tensor
 
 \begin{figure}[h!]
 \centering
-\includegraphics[width=0.75\columnwidth]{figs/combined_ep_tp.pdf}
+\includegraphics[width=0.75\columnwidth]{figs/combined_ep_tp.png}
 \caption{Throughput using Tensor and Expert Parallelism.}
 \tagpdfsetup{alttext={Throughput using Tensor and Expert Parallelism.}}
 \label{fig:ep}

@@ -16,7 +16,7 @@ From those experiments, we can extract three main insights:
 
 \begin{figure}[h]
     \centering
-    \includegraphics[width=\textwidth]{figs/combined_performance_plots.pdf}
+    \includegraphics[width=\textwidth]{figs/combined_performance_plots.png}
     \caption{The evolution of performance and energy efficiency with batch size across six GPUs.}
     \tagpdfsetup{alttext={The evolution of performance and energy efficiency with batch size across six GPUs.}}
     \label{fig:all_metrics_1gpu}
@@ -38,7 +38,7 @@ NVIDIA Hopper GPUs emerge as the most performant and energy-efficient GPU among 
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.9\textwidth]{figs/throughput_latency_plot.pdf}
+    \includegraphics[width=0.9\textwidth]{figs/throughput_latency_plot.png}
         \caption{Trade-off between throughput and latency across batch sizes (16-128), using four LLM models and six different GPUs. The numbers in the plots indicate the batch sizes.}
         \tagpdfsetup{alttext={Trade-off between throughput and latency across batch sizes (16-128), using four LLM models and six different GPUs. The numbers in the plots indicate the batch sizes.}}
     \label{fig:bs}
@@ -57,7 +57,7 @@ In contrast, metrics related to online serving, such as TTFT, ITL, or E2E latenc
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.7\textwidth]{figs/trend_Latency_TTFT_Throughput_Energy.pdf}
+    \includegraphics[width=0.7\textwidth]{figs/trend_Latency_TTFT_Throughput_Energy.png}
     \caption{Performance and energy efficiency across six GPUs for models of varying size.}
     \tagpdfsetup{alttext={Performance and energy efficiency across six GPUs for models of varying size.}}
     \label{fig:1gpu_modelsize}
@@ -72,7 +72,7 @@ This trend is consistent with the analysis made in Chapter \ref{chap:methods:sec
 \begin{comment}
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.9\textwidth]{figs/fp8_vs_bf16_improvements_subplots.pdf}
+    \includegraphics[width=0.9\textwidth]{figs/fp8_vs_bf16_improvements_subplots.png}
         \caption{  Throughput and energy-efficiency gains (FP8 vs. bfloat16) across four LLM models and four GPUs. The greatest improvement is annotated.}
     \label{fig:fp8}
 \end{figure}
@@ -80,7 +80,7 @@ This trend is consistent with the analysis made in Chapter \ref{chap:methods:sec
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=\textwidth]{figs/throughput_by_model_with_precisions_filled.pdf}
+    \includegraphics[width=\textwidth]{figs/throughput_by_model_with_precisions_filled.png}
     \caption{Throughput (tok/s) comaprison between bfloat16 and FP8 precision across GPUs and LLM models.}
     \tagpdfsetup{alttext={Throughput (tok/s) comaprison between bfloat16 and FP8 precision across GPUs and LLM models.}}
     \label{fig:fp8bs}
